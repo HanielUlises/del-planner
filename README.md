@@ -73,6 +73,8 @@ with the standard semantics, $\mathit{Kw}_i\varphi \equiv [i]\varphi \vee [i]\ne
 \mathcal{M} \models \varphi \quad\text{iff}\quad \mathcal{M}, w \models \varphi \ \text{ for every } w \in W^*.
 ```
 
+EPDDL group modalities are read as plank's model checker reads them, agent by agent: $[G]\varphi$ is $\bigwedge_{i \in G} [i]\varphi$, and $\langle G\rangle\varphi$, $[\mathit{Kw}.G]\varphi$ and $\langle \mathit{Kw}.G\rangle\varphi$ are conjunctions over $G$ as well. Only `C.box` and `C.diamond` denote common knowledge. Reading $[G]\varphi$ as $C_G\varphi$ is stronger, so every plan still validates, but it silently changes the goal: on IεPC selective-communication it turned the optimal 5- and 6-step plans of sc-05-06 and sc-06-07 into plans of 4 270 and 24 259 steps.
+
 Frames are $S5_n$ (knowledge) or $KD45_n$ (belief); the latter requires every $R_i$ to be serial, which the product update does not preserve and must therefore repair.
 
 ### 2.2 Product update
@@ -306,6 +308,8 @@ Where preconditions are monotone the closure does discriminate. On `coin4` it se
 
 Neither is used by the automatic selector. `radd` is roughly neutral on the suite (within ±13 expansions of `ed` everywhere) at two to three times the per-node cost; `rpg`'s max aggregation collapses conjunctive goals and regresses `grapevine1` from 5 expansions to 279. Treat `rpg` as an admissible lower bound rather than a search guide.
 
+Two other routes to guidance exist in the literature. The epistemic planning graph of PG-EFP (Le, Fabiano, Son & Pontelli, ICAPS 2018) keeps e-states in its levels and proves that the first level possibly entailing the goal bounds plan length from below, for d-observable problems of $m\mathcal{A}^*$, where every agent fully observes an action or is oblivious to it. Learned estimates from graph neural networks over Kripke structures (Briglia, Fabiano & Mariani, 2025) guide search without such a bound.
+
 ### 8.2 Search guidance is not this planner's bottleneck
 
 The suite provides no headroom for a better heuristic, and it is worth stating why rather than leaving it implicit. On Gossip scaled from 5 to 7 agents, every heuristic — including plain `ug` — expands exactly the plan length, with no backtracking whatsoever:
@@ -451,6 +455,8 @@ Notably absent: `std::mdspan`, which is the natural spelling for the $\lvert W\r
 - Paige & Tarjan. *Three Partition Refinement Algorithms*. SIAM Journal on Computing, 1987.
 - Hoffmann & Nebel. *The FF Planning System*. JAIR, 2001.
 - Hansen & Zilberstein. *LAO\*: A Heuristic Search Algorithm that Finds Solutions with Loops*. Artificial Intelligence, 2001.
+- Le, Fabiano, Son & Pontelli. *EFP and PG-EFP: Epistemic Forward Search Planners in Multi-Agent Domains*. ICAPS 2018. doi:10.1609/icaps.v28i1.13881
+- Briglia, Fabiano & Mariani. *Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics*. arXiv:2508.12840, 2025.
 
 ---
 
