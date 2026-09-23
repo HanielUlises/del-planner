@@ -95,39 +95,36 @@ static FormulaPtr parse_formula(
         FormulaPtr child =
             parse_formula(j.at("formula"), atom_idx, agent_idx);
 
-        if (mname == "box") {
-            if (midx.size() == 1) {
-                std::string aname = midx[0].get<std::string>();
-                auto it = agent_idx.find(aname);
-                if (it == agent_idx.end())
-                    throw std::runtime_error("Unknown agent: " + aname);
-
-                return Formula::make_belief(it->second, child);
-            }
-
+        // Group modalities follow plank's model checker: [G]φ and <G>φ quantify
+        // over each agent of G separately, [G]φ ≡ ∧_{i∈G} [i]φ and
+        // <G>φ ≡ ∧_{i∈G} <i>φ. Common knowledge is the separate "C.box".
+        auto group_of = [&](const char* what) {
             std::vector<AgentIdx> grp;
             for (const auto a : midx) {
                 std::string aname = a.get<std::string>();
                 auto it = agent_idx.find(aname);
                 if (it == agent_idx.end())
-                    throw std::runtime_error("Unknown agent in group: " + aname);
+                    throw std::runtime_error(std::string("Unknown agent in ") + what + ": " + aname);
                 grp.push_back(it->second);
             }
+            if (grp.empty())
+                throw std::runtime_error(std::string("Empty modality index in ") + what);
+            return grp;
+        };
 
-            return Formula::make_common(std::move(grp), child);
+        if (mname == "box") {
+            std::vector<FormulaPtr> conjuncts;
+            for (AgentIdx ag : group_of("box"))
+                conjuncts.push_back(Formula::make_belief(ag, child));
+            return conjuncts.size() == 1 ? conjuncts[0] : Formula::make_and(std::move(conjuncts));
         }
 
         if (mname == "diamond") {
-            if (midx.size() == 1) {
-                std::string aname = midx[0].get<std::string>();
-                auto it = agent_idx.find(aname);
-                if (it == agent_idx.end())
-                    throw std::runtime_error("Unknown agent: " + aname);
-
-                return Formula::make_not(
-                    Formula::make_belief(it->second,
-                        Formula::make_not(child)));
-            }
+            std::vector<FormulaPtr> conjuncts;
+            for (AgentIdx ag : group_of("diamond"))
+                conjuncts.push_back(Formula::make_not(
+                    Formula::make_belief(ag, Formula::make_not(child))));
+            return conjuncts.size() == 1 ? conjuncts[0] : Formula::make_and(std::move(conjuncts));
         }
 
         // [Kw.i]φ  ≡  [i]φ ∨ [i]¬φ  (knowing-whether)
@@ -154,26 +151,13 @@ static FormulaPtr parse_formula(
         }
 
         // <Kw.i>φ  ≡  ¬([i]φ ∨ [i]¬φ)  (not knowing-whether)
-        // <Kw.G>φ  ≡  ∨_{i∈G} ¬([i]φ ∨ [i]¬φ)
+        // <Kw.G>φ  ≡  ∧_{i∈G} ¬([i]φ ∨ [i]¬φ), as in plank: every agent of G is
+        // uncertain, not merely some agent.
         if (mname == "Kw.diamond") {
-            if (midx.size() == 1) {
-                std::string aname = midx[0].get<std::string>();
-                auto it = agent_idx.find(aname);
-                if (it == agent_idx.end())
-                    throw std::runtime_error("Unknown agent: " + aname);
-                return Formula::make_not(Formula::make_kw(it->second, child));
-            }
-            if (midx.size() > 1) {
-                std::vector<FormulaPtr> disjuncts;
-                for (const auto a : midx) {
-                    std::string aname = a.get<std::string>();
-                    auto it = agent_idx.find(aname);
-                    if (it == agent_idx.end())
-                        throw std::runtime_error("Unknown agent in Kw.diamond group: " + aname);
-                    disjuncts.push_back(Formula::make_not(Formula::make_kw(it->second, child)));
-                }
-                return Formula::make_or(std::move(disjuncts));
-            }
+            std::vector<FormulaPtr> conjuncts;
+            for (AgentIdx ag : group_of("Kw.diamond"))
+                conjuncts.push_back(Formula::make_not(Formula::make_kw(ag, child)));
+            return conjuncts.size() == 1 ? conjuncts[0] : Formula::make_and(std::move(conjuncts));
         }
 
         // C.box — common knowledge/belief over a group
