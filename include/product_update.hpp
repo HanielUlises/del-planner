@@ -32,17 +32,17 @@ struct ProductUpdateResult {
 // Compute s ⊗ a (DEL product update).
 [[nodiscard]] Outcome<ProductUpdateResult>
 product_update_with_map(const EpistemicState& s, const Action& a,
-                        bool enforce_kd45 = false,
+                        FrameGuard guard = FrameGuard::None,
                         const WorldCapPolicy& cap = make_world_cap_policy(false));
 
 [[nodiscard]] Outcome<EpistemicState>
 product_update(const EpistemicState& s, const Action& a,
-               bool enforce_kd45 = false,
+               FrameGuard guard = FrameGuard::None,
                const WorldCapPolicy& cap = make_world_cap_policy(false));
 
 // Sensing update: one state per designated event, all sharing the same product
 // model and differing only in which worlds are designated.
 [[nodiscard]] std::vector<std::pair<EventIdx, EpistemicState>>
 product_update_split(const EpistemicState& s, const Action& a,
-                     bool enforce_kd45 = false,
+                     FrameGuard guard = FrameGuard::None,
                      const WorldCapPolicy& cap = make_world_cap_policy(false));

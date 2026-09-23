@@ -14,6 +14,33 @@ struct VisitHash {
 };
 using Visited = std::unordered_set<std::pair<const PlanNode*, Fingerprint>, VisitHash>;
 
+/// Whether a state has left the frame its task declares.
+///
+/// An agent with no successor at a designated world knows everything there,
+/// for want of anywhere to check: K_i φ quantifies over an empty set and holds
+/// whatever φ says. A goal credited against such a state says nothing, and the
+/// plan that produced it can be a plan that never acted on half of what the
+/// goal asks.
+///
+/// Only S5 is checked. KD45 loses seriality by design --- an announcement
+/// against what an agent believed is belief expansion and not a defect --- and
+/// plank, which the tasks come from, does not repair it either.
+bool off_frame(const EpistemicState& s, const PlanningTask& task, std::string& why) {
+    if (task.frame_guard() != FrameGuard::Refuse) return false;
+
+    for (WorldIdx w = 0; w < s.num_worlds; ++w) {
+        if (!s.is_designated(w)) continue;
+        for (AgentIdx ag = 0; ag < static_cast<AgentIdx>(task.agent_names.size()); ++ag) {
+            if (s.succ(ag, w).empty()) {
+                why = "agent " + task.agent_names[ag] +
+                      " has no accessible world from designated world " + std::to_string(w);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 static void replay(const EpistemicState& s,
@@ -21,6 +48,17 @@ static void replay(const EpistemicState& s,
                    const PlanningTask& task,
                    ValidationResult& result,
                    Visited& visited) {
+
+    // The frame first, because everything below is asked of this state and a
+    // state off its frame answers anything.
+    {
+        std::string why;
+        if (off_frame(s, task, why)) {
+            result.valid = false;
+            result.error = "off-frame state, so nothing it says counts: " + why;
+            return;
+        }
+    }
 
     // Null node means this branch is at goal
     if (!node) {
@@ -56,7 +94,7 @@ static void replay(const EpistemicState& s,
 
     // Split product update — one branch per designated event. Uses the task's
     // frame and no world cap: validity must not depend on search limits.
-    auto branches = product_update_split(s, *action, task.repair_seriality(), make_world_cap_policy(true));
+    auto branches = product_update_split(s, *action, task.frame_guard(), make_world_cap_policy(true));
     if (branches.empty()) {
         result.valid = false;
         result.error = "product_update_split returned empty for: " + node->action;

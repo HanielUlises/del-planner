@@ -119,7 +119,7 @@ void print_signature(const PlanningTask& task, std::ostream& out) {
     const auto cap = make_world_cap_policy(true);
     for (const Action& a : task.actions) {
         if (!a.applicable(init)) continue;
-        auto r = product_update(init, a, task.repair_seriality(), cap);
+        auto r = product_update(init, a, task.frame_guard(), cap);
         if (!r) continue;
         const double g = double(bisim_contract(std::move(*r)).num_worlds) / double(std::max<std::uint32_t>(1, init.num_worlds));
         growth_max = std::max(growth_max, g);
