@@ -1,0 +1,101 @@
+problem,solved,validator,depth,expanded,generated,seconds,note
+1-basic/active-muddy-child/amc-03-02-clean,True,OK,2,11,10,0.0,
+1-basic/active-muddy-child/amc-03-03-muddy,True,OK,2,10,9,0.0,
+1-basic/active-muddy-child/amc-06-03-clean,True,OK,5,314,321,0.03,
+1-basic/active-muddy-child/amc-06-06-muddy,True,OK,5,100,96,0.01,
+1-basic/active-muddy-child/amc-09-05-clean,True,OK,,36,165,1.18,
+1-basic/active-muddy-child/amc-09-05-muddy,True,OK,,59,266,1.23,
+1-basic/active-muddy-child/amc-09-09-muddy,True,OK,8,352,345,0.42,
+1-basic/active-muddy-child/amc-12-06-clean,True,,11,62,292,2.38,
+1-basic/active-muddy-child/amc-12-06-muddy,True,,11,87,441,3.35,
+1-basic/active-muddy-child/amc-12-12-muddy,True,OK,,22,74,2.79,
+1-basic/blocks-world/bw-05,False,,,,,,not ground
+1-basic/blocks-world/bw-10,False,,,,,,not ground
+1-basic/blocks-world/bw-15,False,,,,,,not ground
+1-basic/blocks-world/bw-20,False,,,,,,not ground
+1-basic/blocks-world/bw-25,False,,,,,,not ground
+1-basic/blocks-world/bw-30,False,,,,,,not ground
+1-basic/blocks-world/bw-35,False,,,,,,not ground
+1-basic/blocks-world/bw-40,False,,,,,,not ground
+1-basic/blocks-world/bw-45,False,,,,,,not ground
+1-basic/blocks-world/bw-50,False,,,,,,not ground
+1-basic/consecutive-numbers/cn-2-05,True,,3,3,42,0.0,
+1-basic/consecutive-numbers/cn-2-15,True,,8,8,167,0.0,
+1-basic/consecutive-numbers/cn-2-20,True,,18,18,737,0.01,
+1-basic/consecutive-numbers/cn-3-05,False,,,,,0.0,[main] No solution found.
+1-basic/consecutive-numbers/cn-3-10,True,,5,5,311,0.0,
+1-basic/consecutive-numbers/cn-3-20,False,,,,,0.01,[main] No solution found.
+1-basic/consecutive-numbers/cn-4-10,False,,,,,0.0,[main] No solution found.
+1-basic/consecutive-numbers/cn-4-20,False,,,,,0.04,[main] No solution found.
+1-basic/consecutive-numbers/cn-5-10,False,,,,,0.01,[main] No solution found.
+1-basic/consecutive-numbers/cn-5-20,False,,,,,0.35,[main] No solution found.
+1-basic/gossip/gos-03-all,True,,6,6,13,0.0,
+1-basic/gossip/gos-05-all,True,,20,20,80,0.01,
+1-basic/gossip/gos-07-all,True,,42,42,207,0.03,
+1-basic/gossip/gos-07-single,True,,6,6,6,0.01,
+1-basic/gossip/gos-09-all,True,,72,72,394,0.17,
+1-basic/gossip/gos-09-single,True,,8,8,8,0.08,
+1-basic/gossip/gos-11-all,True,,110,110,641,1.77,
+1-basic/gossip/gos-11-single,True,,10,10,10,1.49,
+1-basic/gossip/gos-13-all,False,,,,,,not ground
+2-intermediate/blocks-world/bw-3-03-2,False,,,,,,not ground
+2-intermediate/blocks-world/bw-3-04-2,False,,,,,,not ground
+2-intermediate/blocks-world/bw-3-05-2,False,,,,,,not ground
+2-intermediate/blocks-world/bw-3-06-2,False,,,,,,not ground
+2-intermediate/blocks-world/bw-4-05-2,False,,,,,,not ground
+2-intermediate/blocks-world/bw-4-06-3,False,,,,,,not ground
+2-intermediate/blocks-world/bw-4-07-3,False,,,,,,not ground
+2-intermediate/blocks-world/bw-5-07-3,False,,,,,,not ground
+2-intermediate/blocks-world/bw-5-08-3,False,,,,,,not ground
+2-intermediate/blocks-world/bw-5-10-3,False,,,,,,not ground
+2-intermediate/cloud-scheduling/cloud-01-len03,True,OK,,3,9,0.0,
+2-intermediate/cloud-scheduling/cloud-02-len04,True,OK,,4,12,0.0,
+2-intermediate/cloud-scheduling/cloud-03-len06,True,OK,,6,13,0.0,
+2-intermediate/cloud-scheduling/cloud-04-len09,True,OK,,9,37,0.0,
+2-intermediate/cloud-scheduling/cloud-05-len10,True,OK,,10,41,0.0,
+2-intermediate/cloud-scheduling/cloud-06-len12,True,OK,,12,38,0.0,
+2-intermediate/cloud-scheduling/cloud-07-len15,True,OK,,15,77,0.01,
+2-intermediate/cloud-scheduling/cloud-08-len16,True,OK,,16,82,0.01,
+2-intermediate/cloud-scheduling/cloud-09-len18,True,OK,,18,75,0.01,
+2-intermediate/cloud-scheduling/cloud-10-len21,True,OK,,21,129,0.03,
+2-intermediate/gossip/gos-03-all,True,OK,6,154,154,0.0,
+2-intermediate/gossip/gos-05-all,True,,20,20,80,0.01,
+2-intermediate/gossip/gos-07-all,True,,42,42,207,0.12,
+2-intermediate/gossip/gos-07-single,True,,6,6,6,0.01,
+2-intermediate/gossip/gos-09-all,True,,72,72,394,1.36,
+2-intermediate/gossip/gos-09-single,True,,8,8,8,0.09,
+2-intermediate/gossip/gos-11-all,False,,,,,,not ground
+2-intermediate/gossip/gos-11-single,False,,,,,,not ground
+2-intermediate/search-and-rescue/sar-01-n1-nofire,True,OK,4,125,138,0.0,
+2-intermediate/search-and-rescue/sar-02-n2-nofire,False,,,,,,not ground
+2-intermediate/search-and-rescue/sar-03-n1-fire,True,OK,7,9721,9755,0.07,
+2-intermediate/search-and-rescue/sar-04-n3-nofire,False,,,,,,not ground
+2-intermediate/search-and-rescue/sar-05-n4-nofire,False,,,,,,not ground
+2-intermediate/search-and-rescue/sar-06-n2-fire,False,,,,,,not ground
+2-intermediate/search-and-rescue/sar-07-n3-fire,False,,,,,,not ground
+2-intermediate/search-and-rescue/sar-08-n4-fire,False,,,,,,not ground
+2-intermediate/selective-communication/sc-03-04,False,,,,,,not ground
+2-intermediate/selective-communication/sc-04-05,False,,,,,,not ground
+2-intermediate/selective-communication/sc-05-06,False,,,,,,not ground
+2-intermediate/selective-communication/sc-06-07,False,,,,,,not ground
+2-intermediate/selective-communication/sc-07-08,False,,,,,,not ground
+2-intermediate/selective-communication/sc-08-09,False,,,,,,not ground
+2-intermediate/selective-communication/sc-09-10,False,,,,,,not ground
+2-intermediate/selective-communication/sc-10-11,False,,,,,,not ground
+2-intermediate/selective-communication/sc-11-12,False,,,,,,not ground
+2-intermediate/selective-communication/sc-12-13,False,,,,,,not ground
+3-hard/blocks-world/bw-3-3-2-clumsy,False,,,,,,not ground
+3-hard/blocks-world/bw-3-5-2-clumsy,False,,,,,,not ground
+3-hard/blocks-world/bw-4-5-2-clumsy,False,,,,,,not ground
+3-hard/blocks-world/bw-4-7-3-clumsy,False,,,,,,not ground
+3-hard/blocks-world/bw-5-8-3-clumsy,False,,,,,,not ground
+3-hard/gossip/gos-04-all-deceived,False,,,,,,not ground
+3-hard/gossip/gos-04-imp-deceived,False,,,,,,not ground
+3-hard/gossip/gos-06-all-deceived,False,,,,,,not ground
+3-hard/gossip/gos-06-imp-deceived,False,,,,,,not ground
+3-hard/gossip/gos-08-all-deceived,False,,,,,,not ground
+3-hard/gossip/gos-08-imp-deceived,False,,,,,,not ground
+3-hard/gossip/gos-10-all-deceived,False,,,,,,not ground
+3-hard/gossip/gos-10-imp-deceived,False,,,,,,not ground
+3-hard/gossip/gos-12-all-deceived,False,,,,,,not ground
+3-hard/gossip/gos-12-imp-deceived,False,,,,,,not ground
