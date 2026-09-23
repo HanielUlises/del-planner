@@ -163,7 +163,7 @@ std::vector<bits::Word> serial_core(const EpistemicState& s) {
 
 Outcome<ProductUpdateResult>
 product_update_with_map(const EpistemicState& s, const Action& a,
-                        bool enforce_kd45, const WorldCapPolicy& cap) {
+                        FrameGuard guard, const WorldCapPolicy& cap) {
     const std::uint32_t nw = s.num_worlds;
     const std::uint32_t na = s.num_agents;
     const std::uint32_t ne = static_cast<std::uint32_t>(a.events.size());
@@ -281,8 +281,17 @@ product_update_with_map(const EpistemicState& s, const Action& a,
 
     result.invalidate();
 
-    // KD45 repair.
-    if (enforce_kd45) {
+    // The frame guard. Seriality is the invariant both frames need and the
+    // only one a private announcement does not break on its own: an oblivious
+    // agent's successor of (w, e) is (w, nil), which exists, so reflexivity
+    // goes and seriality stays. A world where seriality has gone is a world
+    // where some agent has no successor and believes everything.
+    if (guard == FrameGuard::Refuse) {
+        const auto alive = serial_core(result);
+        if (!bits::subset_of(result.designated_bits(), alive)) {
+            return pruned<ProductUpdateResult>(PruneReason::OffFrame);
+        }
+    } else if (guard == FrameGuard::Prune) {
         const auto alive = serial_core(result);
 
         if (bits::count(alive) != result.num_worlds) {
@@ -307,8 +316,8 @@ product_update_with_map(const EpistemicState& s, const Action& a,
 
 Outcome<EpistemicState>
 product_update(const EpistemicState& s, const Action& a,
-               bool enforce_kd45, const WorldCapPolicy& cap) {
-    auto res = product_update_with_map(s, a, enforce_kd45, cap);
+               FrameGuard guard, const WorldCapPolicy& cap) {
+    auto res = product_update_with_map(s, a, guard, cap);
     if (!res) return pruned<EpistemicState>(res.error());
     return ok(std::move(res->state));
 }
@@ -323,8 +332,8 @@ product_update(const EpistemicState& s, const Action& a,
 // different worlds.
 std::vector<std::pair<EventIdx, EpistemicState>>
 product_update_split(const EpistemicState& s, const Action& a,
-                     bool enforce_kd45, const WorldCapPolicy& cap) {
-    auto full = product_update_with_map(s, a, enforce_kd45, cap);
+                     FrameGuard guard, const WorldCapPolicy& cap) {
+    auto full = product_update_with_map(s, a, guard, cap);
     if (!full) return {};
 
     const EpistemicState& model = full->state;

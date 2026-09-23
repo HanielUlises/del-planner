@@ -64,7 +64,7 @@ struct Result {
 
 std::vector<std::pair<EventIdx, EpistemicState>>
 outcomes(const EpistemicState& s, const Action& a, Context& c) {
-    auto branches = product_update_split(s, a, c.task.repair_seriality(), c.cap);
+    auto branches = product_update_split(s, a, c.task.frame_guard(), c.cap);
     for (auto& [e, b] : branches) b = bisim_contract(std::move(b));
     c.stats.nodes_generated += branches.size();
     return branches;

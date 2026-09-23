@@ -28,6 +28,14 @@ struct PlanningTask {
 
     [[nodiscard]] bool repair_seriality() const noexcept { return kd45 && kd45_repair; }
 
+    // S5 refuses a product that left the frame, KD45 repairs one if asked to,
+    // and an unrepaired KD45 task keeps the behaviour it always had.
+    [[nodiscard]] FrameGuard frame_guard() const noexcept
+    {
+        if (!kd45) return FrameGuard::Refuse;
+        return kd45_repair ? FrameGuard::Prune : FrameGuard::None;
+    }
+
     // True iff at least one action has agents with heterogeneous observability
     // (some Fully, some Oblivious or conditional). Set by the parser after all
     // actions are loaded. Gossip, Grapevine, and AMC are the canonical cases.
