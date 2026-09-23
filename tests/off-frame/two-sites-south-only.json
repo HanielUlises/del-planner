@@ -1,0 +1,6996 @@
+{
+  "planning-task-info": {
+    "problem": "two-site-survey",
+    "domain": "survey-sites",
+    "libraries": [
+      "intermediate"
+    ],
+    "requirements": [
+      ":common-knowledge",
+      ":disjunctive-list-formulas",
+      ":disjunctive-preconditions",
+      ":equality",
+      ":events-conditions",
+      ":finitary-S5-theories",
+      ":group-modalities",
+      ":knowing-whether",
+      ":list-comprehensions",
+      ":lists",
+      ":modal-goals",
+      ":modal-preconditions",
+      ":multi-pointed-models",
+      ":negative-list-formulas",
+      ":negative-preconditions",
+      ":ontic-actions",
+      ":partial-observability",
+      ":static-common-knowledge"
+    ],
+    "agents-number": 4,
+    "atoms-number": 10,
+    "facts-number": 0,
+    "actions-number": 96,
+    "initial-worlds-number": 4,
+    "goal-modal-depth": 1,
+    "goal-size": 7
+  },
+  "language": {
+    "atoms": [
+      "on-south_north",
+      "on-south_south",
+      "on-south_relay",
+      "on-south_observer",
+      "on-north_north",
+      "on-north_south",
+      "on-north_relay",
+      "on-north_observer",
+      "contaminated-south",
+      "contaminated-north"
+    ],
+    "agents": [
+      "north",
+      "south",
+      "relay",
+      "observer"
+    ]
+  },
+  "facts": [],
+  "initial-state": {
+    "worlds": [
+      "w0",
+      "w1",
+      "w2",
+      "w3"
+    ],
+    "relations": {
+      "north": {
+        "w0": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w1": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w2": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w3": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ]
+      },
+      "south": {
+        "w0": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w1": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w2": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w3": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ]
+      },
+      "relay": {
+        "w0": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w1": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w2": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w3": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ]
+      },
+      "observer": {
+        "w0": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w1": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w2": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w3": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ]
+      }
+    },
+    "labels": {
+      "w0": [],
+      "w1": [
+        "contaminated-north"
+      ],
+      "w2": [
+        "contaminated-south"
+      ],
+      "w3": [
+        "contaminated-south",
+        "contaminated-north"
+      ]
+    },
+    "designated": [
+      "w3",
+      "w2",
+      "w1",
+      "w0"
+    ]
+  },
+  "actions": {
+    "goto-north_north": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-north"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-north": [
+            "e-goto-north"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-north"
+      ],
+      "preconditions": {
+        "e-goto-north": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-north_north"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-north": {
+          "on-north_north": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "goto-north_south": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-north"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-north": [
+            "e-goto-north"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-north"
+      ],
+      "preconditions": {
+        "e-goto-north": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-north_south"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-north": {
+          "on-north_south": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "goto-north_relay": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-north"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-north": [
+            "e-goto-north"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-north"
+      ],
+      "preconditions": {
+        "e-goto-north": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-north_relay"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-north": {
+          "on-north_relay": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "goto-north_observer": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-north"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-north": [
+            "e-goto-north"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-north"
+      ],
+      "preconditions": {
+        "e-goto-north": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-north_observer"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-north": {
+          "on-north_observer": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "goto-south_north": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-south"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-south": [
+            "e-goto-south"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-south"
+      ],
+      "preconditions": {
+        "e-goto-south": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-south_north"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-south": {
+          "on-south_north": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "goto-south_south": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-south"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-south": [
+            "e-goto-south"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-south"
+      ],
+      "preconditions": {
+        "e-goto-south": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-south_south"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-south": {
+          "on-south_south": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "goto-south_relay": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-south"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-south": [
+            "e-goto-south"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-south"
+      ],
+      "preconditions": {
+        "e-goto-south": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-south_relay"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-south": {
+          "on-south_relay": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "goto-south_observer": {
+      "action-type": "public-ontic",
+      "events": [
+        "e-goto-south"
+      ],
+      "relations": {
+        "Fully": {
+          "e-goto-south": [
+            "e-goto-south"
+          ]
+        }
+      },
+      "designated": [
+        "e-goto-south"
+      ],
+      "preconditions": {
+        "e-goto-south": {
+          "formula": {
+            "connective": "not",
+            "formula": "on-south_observer"
+          }
+        }
+      },
+      "effects": {
+        "e-goto-south": {
+          "on-south_observer": {
+            "formula": "true"
+          }
+        }
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-north_north": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "preconditions": {
+        "e-scan-north-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_north",
+              "contaminated-north",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "north"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        },
+        "e-scan-north-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_north",
+              {
+                "connective": "not",
+                "formula": "contaminated-north"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "north"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-north-dirty": null,
+        "e-scan-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Partially": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-north_south": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "preconditions": {
+        "e-scan-north-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_south",
+              "contaminated-north",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "south"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        },
+        "e-scan-north-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_south",
+              {
+                "connective": "not",
+                "formula": "contaminated-north"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "south"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-north-dirty": null,
+        "e-scan-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Partially": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-north_relay": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "preconditions": {
+        "e-scan-north-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_relay",
+              "contaminated-north",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "relay"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        },
+        "e-scan-north-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_relay",
+              {
+                "connective": "not",
+                "formula": "contaminated-north"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "relay"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-north-dirty": null,
+        "e-scan-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Partially": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-north_observer": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-north-dirty": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ],
+          "e-scan-north-clean": [
+            "e-scan-north-dirty",
+            "e-scan-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-north-dirty",
+        "e-scan-north-clean"
+      ],
+      "preconditions": {
+        "e-scan-north-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_observer",
+              "contaminated-north",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "observer"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        },
+        "e-scan-north-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-north_observer",
+              {
+                "connective": "not",
+                "formula": "contaminated-north"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "observer"
+                ],
+                "formula": "contaminated-north"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-north-dirty": null,
+        "e-scan-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-south_north": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "preconditions": {
+        "e-scan-south-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_north",
+              "contaminated-south",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "north"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        },
+        "e-scan-south-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_north",
+              {
+                "connective": "not",
+                "formula": "contaminated-south"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "north"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-south-dirty": null,
+        "e-scan-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Partially": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-south_south": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "preconditions": {
+        "e-scan-south-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_south",
+              "contaminated-south",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "south"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        },
+        "e-scan-south-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_south",
+              {
+                "connective": "not",
+                "formula": "contaminated-south"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "south"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-south-dirty": null,
+        "e-scan-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Partially": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-south_relay": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "preconditions": {
+        "e-scan-south-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_relay",
+              "contaminated-south",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "relay"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        },
+        "e-scan-south-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_relay",
+              {
+                "connective": "not",
+                "formula": "contaminated-south"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "relay"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-south-dirty": null,
+        "e-scan-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Partially": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "scan-south_observer": {
+      "action-type": "semi-private-sensing",
+      "events": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-clean"
+          ]
+        },
+        "Partially": {
+          "e-scan-south-dirty": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ],
+          "e-scan-south-clean": [
+            "e-scan-south-dirty",
+            "e-scan-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-scan-south-dirty",
+        "e-scan-south-clean"
+      ],
+      "preconditions": {
+        "e-scan-south-dirty": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_observer",
+              "contaminated-south",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "observer"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        },
+        "e-scan-south-clean": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "on-south_observer",
+              {
+                "connective": "not",
+                "formula": "contaminated-south"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "observer"
+                ],
+                "formula": "contaminated-south"
+              }
+            ]
+          }
+        }
+      },
+      "effects": {
+        "e-scan-south-dirty": null,
+        "e-scan-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Partially": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-dirty_north": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-dirty",
+        "e-not-open-north-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-dirty": [
+            "e-open-north-dirty"
+          ],
+          "e-not-open-north-dirty": [
+            "e-not-open-north-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-dirty"
+      ],
+      "preconditions": {
+        "e-open-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "e-not-open-north-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "north"
+              ],
+              "formula": "contaminated-north"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-dirty": null,
+        "e-not-open-north-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-dirty_south": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-dirty",
+        "e-not-open-north-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-dirty": [
+            "e-open-north-dirty"
+          ],
+          "e-not-open-north-dirty": [
+            "e-not-open-north-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-dirty"
+      ],
+      "preconditions": {
+        "e-open-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "e-not-open-north-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "south"
+              ],
+              "formula": "contaminated-north"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-dirty": null,
+        "e-not-open-north-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-dirty_relay": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-dirty",
+        "e-not-open-north-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-dirty": [
+            "e-open-north-dirty"
+          ],
+          "e-not-open-north-dirty": [
+            "e-not-open-north-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-dirty"
+      ],
+      "preconditions": {
+        "e-open-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "e-not-open-north-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "relay"
+              ],
+              "formula": "contaminated-north"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-dirty": null,
+        "e-not-open-north-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-dirty_observer": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-dirty",
+        "e-not-open-north-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-dirty": [
+            "e-open-north-dirty"
+          ],
+          "e-not-open-north-dirty": [
+            "e-not-open-north-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-dirty"
+      ],
+      "preconditions": {
+        "e-open-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "e-not-open-north-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "observer"
+              ],
+              "formula": "contaminated-north"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-dirty": null,
+        "e-not-open-north-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-clean_north": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-clean",
+        "e-not-open-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-clean": [
+            "e-open-north-clean"
+          ],
+          "e-not-open-north-clean": [
+            "e-not-open-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-clean"
+      ],
+      "preconditions": {
+        "e-open-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "e-not-open-north-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "north"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-north"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-clean": null,
+        "e-not-open-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-clean_south": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-clean",
+        "e-not-open-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-clean": [
+            "e-open-north-clean"
+          ],
+          "e-not-open-north-clean": [
+            "e-not-open-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-clean"
+      ],
+      "preconditions": {
+        "e-open-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "e-not-open-north-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "south"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-north"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-clean": null,
+        "e-not-open-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-clean_relay": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-clean",
+        "e-not-open-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-clean": [
+            "e-open-north-clean"
+          ],
+          "e-not-open-north-clean": [
+            "e-not-open-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-clean"
+      ],
+      "preconditions": {
+        "e-open-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "e-not-open-north-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "relay"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-north"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-clean": null,
+        "e-not-open-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-north-clean_observer": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-north-clean",
+        "e-not-open-north-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-north-clean": [
+            "e-open-north-clean"
+          ],
+          "e-not-open-north-clean": [
+            "e-not-open-north-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-north-clean"
+      ],
+      "preconditions": {
+        "e-open-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "e-not-open-north-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "observer"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-north"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-north-clean": null,
+        "e-not-open-north-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-dirty_north": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-dirty",
+        "e-not-open-south-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-dirty": [
+            "e-open-south-dirty"
+          ],
+          "e-not-open-south-dirty": [
+            "e-not-open-south-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-dirty"
+      ],
+      "preconditions": {
+        "e-open-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "e-not-open-south-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "north"
+              ],
+              "formula": "contaminated-south"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-dirty": null,
+        "e-not-open-south-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-dirty_south": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-dirty",
+        "e-not-open-south-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-dirty": [
+            "e-open-south-dirty"
+          ],
+          "e-not-open-south-dirty": [
+            "e-not-open-south-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-dirty"
+      ],
+      "preconditions": {
+        "e-open-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "e-not-open-south-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "south"
+              ],
+              "formula": "contaminated-south"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-dirty": null,
+        "e-not-open-south-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-dirty_relay": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-dirty",
+        "e-not-open-south-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-dirty": [
+            "e-open-south-dirty"
+          ],
+          "e-not-open-south-dirty": [
+            "e-not-open-south-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-dirty"
+      ],
+      "preconditions": {
+        "e-open-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "e-not-open-south-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "relay"
+              ],
+              "formula": "contaminated-south"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-dirty": null,
+        "e-not-open-south-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-dirty_observer": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-dirty",
+        "e-not-open-south-dirty"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-dirty": [
+            "e-open-south-dirty"
+          ],
+          "e-not-open-south-dirty": [
+            "e-not-open-south-dirty"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-dirty"
+      ],
+      "preconditions": {
+        "e-open-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "e-not-open-south-dirty": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "observer"
+              ],
+              "formula": "contaminated-south"
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-dirty": null,
+        "e-not-open-south-dirty": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-clean_north": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-clean",
+        "e-not-open-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-clean": [
+            "e-open-south-clean"
+          ],
+          "e-not-open-south-clean": [
+            "e-not-open-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-clean"
+      ],
+      "preconditions": {
+        "e-open-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "e-not-open-south-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "north"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-south"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-clean": null,
+        "e-not-open-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-clean_south": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-clean",
+        "e-not-open-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-clean": [
+            "e-open-south-clean"
+          ],
+          "e-not-open-south-clean": [
+            "e-not-open-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-clean"
+      ],
+      "preconditions": {
+        "e-open-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "e-not-open-south-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "south"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-south"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-clean": null,
+        "e-not-open-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-clean_relay": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-clean",
+        "e-not-open-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-clean": [
+            "e-open-south-clean"
+          ],
+          "e-not-open-south-clean": [
+            "e-not-open-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-clean"
+      ],
+      "preconditions": {
+        "e-open-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "e-not-open-south-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "relay"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-south"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-clean": null,
+        "e-not-open-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "broadcast-south-clean_observer": {
+      "action-type": "public-announcement",
+      "events": [
+        "e-open-south-clean",
+        "e-not-open-south-clean"
+      ],
+      "relations": {
+        "Fully": {
+          "e-open-south-clean": [
+            "e-open-south-clean"
+          ],
+          "e-not-open-south-clean": [
+            "e-not-open-south-clean"
+          ]
+        }
+      },
+      "designated": [
+        "e-open-south-clean"
+      ],
+      "preconditions": {
+        "e-open-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "e-not-open-south-clean": {
+          "formula": {
+            "connective": "not",
+            "formula": {
+              "modality-name": "box",
+              "modality-index": [
+                "observer"
+              ],
+              "formula": {
+                "connective": "not",
+                "formula": "contaminated-south"
+              }
+            }
+          }
+        }
+      },
+      "effects": {
+        "e-open-south-clean": null,
+        "e-not-open-south-clean": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_north_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_north_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_north_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_north_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_south_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_south_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_south_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_south_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_relay_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_relay_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_relay_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_relay_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_observer_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_observer_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_observer_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-dirty_observer_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-dirty": [
+            "e-team-north-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-dirty"
+      ],
+      "preconditions": {
+        "e-team-north-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-north"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_north_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_north_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_north_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_north_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_south_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_south_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_south_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_south_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_relay_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_relay_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_relay_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_relay_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_observer_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_observer_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_observer_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-north-clean_observer_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-north-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-north-clean": [
+            "e-team-north-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-north-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-north-clean"
+      ],
+      "preconditions": {
+        "e-team-north-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-north"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-north-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_north_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_north_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_north_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_north_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_south_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_south_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_south_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_south_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_relay_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_relay_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_relay_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_relay_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_observer_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_observer_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_observer_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-dirty_observer_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-dirty",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-dirty": [
+            "e-team-south-dirty"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-dirty": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-dirty"
+      ],
+      "preconditions": {
+        "e-team-south-dirty": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": "contaminated-south"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-dirty": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_north_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_north_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_north_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_north_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "north"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_south_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_south_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_south_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_south_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "south"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_relay_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_relay_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_relay_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_relay_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "relay"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_observer_north": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_observer_south": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_observer_relay": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "relay-south-clean_observer_observer": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-team-south-clean",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-team-south-clean": [
+            "e-team-south-clean"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-team-south-clean": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-team-south-clean"
+      ],
+      "preconditions": {
+        "e-team-south-clean": {
+          "formula": {
+            "modality-name": "box",
+            "modality-index": [
+              "observer"
+            ],
+            "formula": {
+              "connective": "not",
+              "formula": "contaminated-south"
+            }
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-team-south-clean": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "north": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "south": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "relay": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "observer": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    }
+  },
+  "goal": {
+    "formula": {
+      "connective": "and",
+      "formulas": [
+        {
+          "modality-name": "Kw.box",
+          "modality-index": [
+            "south"
+          ],
+          "formula": "contaminated-south"
+        },
+        {
+          "modality-name": "Kw.box",
+          "modality-index": [
+            "relay"
+          ],
+          "formula": "contaminated-south"
+        },
+        {
+          "modality-name": "Kw.diamond",
+          "modality-index": [
+            "observer"
+          ],
+          "formula": "contaminated-south"
+        }
+      ]
+    }
+  }
+}
