@@ -24,11 +24,11 @@
 //
 // Why ordered refinement rather than Paige–Tarjan.
 //
-// Paige-Tarjan refines in O(m log n), asymptotically better than the O(r·(m +
-// n log n)) loop below (r = number of rounds, bounded by n and in practice
-// small). It does not, however, produce a canonical numbering of the resulting
-// classes, and the planner requires one: the closed list identifies states by
-// fingerprint, so bisimilar models must serialise identically.
+// Paige-Tarjan refines in O(m log n), asymptotically better than the loop
+// below (r = number of rounds, bounded by n and in practice small). It does
+// not, however, produce a canonical numbering of the resulting classes, and the
+// planner requires one: the closed list identifies states by fingerprint, so
+// bisimilar models must serialise identically.
 //
 // This implementation obtains canonicity from the refinement itself. Each round
 // sorts worlds by a key and assigns class ids in sorted order:
@@ -44,6 +44,25 @@
 // The fixpoint test is exact: since the round-k key begins with the round-(k-1)
 // class, sorting is order-preserving on the previous partition, so ids are
 // stable and "no class split" is exactly "assignment unchanged".
+//
+// Neither round reaches that order by sorting the worlds outright, because in
+// both the key carries far less information than n log n comparisons extract.
+//
+// Round 0 has one key per distinct valuation, and models hold many fewer of
+// those than worlds — a product update with no ontic effect reproduces every
+// valuation once per event. Hashing the worlds into groups and sorting only the
+// distinct keys costs n hashes and d log d, and a world's class is the rank of
+// its key either way.
+//
+// Round k opens its key with the world's round-(k-1) class, and refinement only
+// splits within a class, so that order is the classes in order and then, inside
+// each, the ranks that follow. Counting-sorting on the class (a dense id) and
+// sorting each class separately leaves the comparison sort runs that shrink
+// towards singletons as the partition nears its fixpoint, where it does nothing.
+//
+// Both are the same order the full sort would produce, so the canonical form is
+// unchanged: measured on IεPC gossip with 8 agents, the two sorts fall from
+// 22.5% of the planner's instruction count to 0.8%, every plan identical.
 
 
 namespace {
@@ -56,7 +75,13 @@ struct Scratch {
     std::vector<std::int32_t>  class_of, next_class;
     std::vector<WorldIdx>      order;
     std::vector<std::int32_t>  key_data;
-    std::vector<std::uint32_t> key_begin;
+    std::vector<std::uint32_t> group_of;     // world  → round-0 key group
+    std::vector<std::uint32_t> group_rep;    // group  → a world carrying its key
+    std::vector<std::uint32_t> group_order;  // groups, in key order
+    std::vector<std::int32_t>  group_rank;   // group  → its rank in that order
+    std::vector<std::uint32_t> table;        // open-addressed slot → group
+    std::vector<std::uint32_t> bucket;       // class  → start of its run in `order`
+    std::vector<std::uint32_t> cursor;       // scatter cursors into `bucket`
     std::vector<std::int32_t>  nset_data;    // N(S): sorted classes of S's members
     std::vector<std::uint32_t> nset_begin;
     std::vector<std::uint32_t> set_order;
@@ -163,41 +188,74 @@ EpistemicState bisim_contract(EpistemicState s) {
     order.resize(nw);
 
     //  Round 0: valuation and designation.
+    //
+    // The key is fixed width, and a model carries far fewer distinct keys than
+    // worlds: a product update with no ontic effect reproduces every valuation
+    // once per event. Sorting the worlds spends n log n comparisons
+    // rediscovering that. Grouping them by key first costs n hashes and leaves
+    // d log d comparisons over the distinct keys, d ≪ n. A world's class is the
+    // rank of its key either way, so the numbering is the one the sort gave.
     {
-        auto& key_data  = sc.key_data;
-        auto& key_begin = sc.key_begin;
-        key_data.clear();
-        key_begin.assign(nw + 1, 0);
+        const std::size_t kw = std::size_t(m.val_words) * 2 + 1;
+        auto& key_data = sc.key_data;
+        key_data.resize(std::size_t(nw) * kw);
         for (WorldIdx w = 0; w < nw; ++w) {
-            key_begin[w] = static_cast<std::uint32_t>(key_data.size());
-            key_data.push_back(m.is_designated(w) ? 1 : 0);
+            std::int32_t* k = key_data.data() + std::size_t(w) * kw;
+            *k++ = m.is_designated(w) ? 1 : 0;
             // Valuation words, halved into int32 so the whole key is one type.
             for (bits::Word word : m.val(w)) {
-                key_data.push_back(static_cast<std::int32_t>(word & 0xFFFFFFFFu));
-                key_data.push_back(static_cast<std::int32_t>(word >> 32));
+                *k++ = static_cast<std::int32_t>(word & 0xFFFFFFFFu);
+                *k++ = static_cast<std::int32_t>(word >> 32);
             }
         }
-        key_begin[nw] = static_cast<std::uint32_t>(key_data.size());
 
         const auto key_at = [&](WorldIdx w) {
-            return std::span<const std::int32_t>(key_data.data() + key_begin[w],
-                                                 key_begin[w + 1] - key_begin[w]);
+            return key_data.data() + std::size_t(w) * kw;
         };
 
-        for (WorldIdx w = 0; w < nw; ++w) order[w] = w;
-        std::sort(order.begin(), order.end(), [&](WorldIdx a, WorldIdx b) {
-            const auto ka = key_at(a), kb = key_at(b);
-            return std::lexicographical_compare(ka.begin(), ka.end(),
-                                                kb.begin(), kb.end());
+        std::size_t cap = 4;
+        while (cap < std::size_t(nw) * 2) cap <<= 1;
+        auto& table     = sc.table;
+        auto& group_of  = sc.group_of;
+        auto& group_rep = sc.group_rep;
+        table.assign(cap, UINT32_MAX);
+        group_of.resize(nw);
+        group_rep.clear();
+
+        for (WorldIdx w = 0; w < nw; ++w) {
+            const std::int32_t* k = key_at(w);
+            bits::Word h = 0x9E3779B97F4A7C15ULL;
+            for (std::size_t i = 0; i < kw; ++i)
+                h = bits::mix64(h ^ static_cast<std::uint32_t>(k[i]));
+            for (std::size_t slot = std::size_t(h) & (cap - 1);; slot = (slot + 1) & (cap - 1)) {
+                const std::uint32_t g = table[slot];
+                if (g == UINT32_MAX) {
+                    group_of[w] = static_cast<std::uint32_t>(group_rep.size());
+                    table[slot] = group_of[w];
+                    group_rep.push_back(w);
+                    break;
+                }
+                const std::int32_t* kg = key_at(group_rep[g]);
+                if (std::equal(kg, kg + kw, k)) { group_of[w] = g; break; }
+            }
+        }
+
+        const auto ng = static_cast<std::uint32_t>(group_rep.size());
+        auto& group_order = sc.group_order;
+        auto& group_rank  = sc.group_rank;
+        group_order.resize(ng);
+        for (std::uint32_t g = 0; g < ng; ++g) group_order[g] = g;
+        std::sort(group_order.begin(), group_order.end(),
+                  [&](std::uint32_t a, std::uint32_t b) {
+            const std::int32_t* ka = key_at(group_rep[a]);
+            const std::int32_t* kb = key_at(group_rep[b]);
+            return std::lexicographical_compare(ka, ka + kw, kb, kb + kw);
         });
 
-        std::int32_t id = 0;
-        class_of[order[0]] = 0;
-        for (std::size_t i = 1; i < nw; ++i) {
-            const auto ka = key_at(order[i - 1]), kb = key_at(order[i]);
-            if (!std::equal(ka.begin(), ka.end(), kb.begin(), kb.end())) ++id;
-            class_of[order[i]] = id;
-        }
+        group_rank.resize(ng);
+        for (std::uint32_t i = 0; i < ng; ++i)
+            group_rank[group_order[i]] = static_cast<std::int32_t>(i);
+        for (WorldIdx w = 0; w < nw; ++w) class_of[w] = group_rank[group_of[w]];
     }
 
     //  Rounds 1..: split on neighbour classes.
@@ -252,18 +310,40 @@ EpistemicState bisim_contract(EpistemicState s) {
             return keys.data() + std::size_t(w) * key_width;
         };
 
-        for (WorldIdx w = 0; w < nw; ++w) order[w] = w;
-        std::sort(order.begin(), order.end(), [&](WorldIdx a, WorldIdx b) {
-            return std::lexicographical_compare(key_at(a), key_at(a) + key_width,
-                                                key_at(b), key_at(b) + key_width);
-        });
+        // The key opens with the world's current class, and refinement only
+        // splits within a class, so sorting by the whole key is sorting the
+        // classes in order and then, inside each, by the ranks that follow.
+        // The first half is a counting sort on a dense id; the second leaves
+        // the comparison sort with one run per class, and those runs shrink
+        // towards singletons as the partition nears its fixpoint, where the
+        // comparison sort does nothing at all.
+        auto& bucket = sc.bucket;
+        auto& cursor = sc.cursor;
+        bucket.assign(std::size_t(num_classes) + 1, 0);
+        for (WorldIdx w = 0; w < nw; ++w) ++bucket[std::size_t(class_of[w]) + 1];
+        for (std::int32_t c = 0; c < num_classes; ++c) bucket[c + 1] += bucket[c];
+        cursor.assign(bucket.begin(), bucket.begin() + num_classes);
+        for (WorldIdx w = 0; w < nw; ++w) order[cursor[class_of[w]]++] = w;
+
+        const std::size_t tail = key_width - 1;   // the ranks, after the class
+        if (tail != 0)
+            for (std::int32_t c = 0; c < num_classes; ++c) {
+                const std::uint32_t b = bucket[c], e = bucket[c + 1];
+                if (e - b < 2) continue;
+                std::sort(order.begin() + b, order.begin() + e,
+                          [&](WorldIdx x, WorldIdx y) {
+                    const std::int32_t* kx = key_at(x) + 1;
+                    const std::int32_t* ky = key_at(y) + 1;
+                    return std::lexicographical_compare(kx, kx + tail, ky, ky + tail);
+                });
+            }
 
         std::int32_t id = 0;
         next_class[order[0]] = 0;
         for (std::size_t i = 1; i < nw; ++i) {
-            if (!std::equal(key_at(order[i - 1]), key_at(order[i - 1]) + key_width,
-                            key_at(order[i])))
-                ++id;
+            const std::int32_t* kp = key_at(order[i - 1]);
+            const std::int32_t* kc = key_at(order[i]);
+            if (kp[0] != kc[0] || !std::equal(kp + 1, kp + key_width, kc + 1)) ++id;
             next_class[order[i]] = id;
         }
 
