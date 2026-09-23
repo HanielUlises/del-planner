@@ -73,7 +73,7 @@ with the standard semantics, $\mathit{Kw}_i\varphi \equiv [i]\varphi \vee [i]\ne
 \mathcal{M} \models \varphi \quad\text{iff}\quad \mathcal{M}, w \models \varphi \ \text{ for every } w \in W^*.
 ```
 
-EPDDL group modalities are read as plank's model checker reads them, agent by agent: $[G]\varphi$ is $\bigwedge_{i \in G} [i]\varphi$, and $\langle G\rangle\varphi$, $[\mathit{Kw}.G]\varphi$ and $\langle \mathit{Kw}.G\rangle\varphi$ are conjunctions over $G$ as well. Only `C.box` and `C.diamond` denote common knowledge. Reading $[G]\varphi$ as $C_G\varphi$ is stronger, so every plan still validates, but it silently changes the goal: on IεPC selective-communication it turned the optimal 5- and 6-step plans of sc-05-06 and sc-06-07 into plans of 4 270 and 24 259 steps.
+EPDDL group modalities follow plank's model checker and are evaluated agent by agent: $[G]\varphi$ is $\bigwedge_{i \in G} [i]\varphi$, and $\langle G\rangle\varphi$, $[\mathit{Kw}.G]\varphi$ and $\langle \mathit{Kw}.G\rangle\varphi$ are conjunctions over $G$. `C.box` and `C.diamond` denote common knowledge. Interpreting $[G]\varphi$ as $C_G\varphi$ strengthens the goal; the validator still accepts the resulting plans, and on IεPC selective-communication the plans for sc-05-06 and sc-06-07 had 4 270 and 24 259 steps, where the optimal lengths are 5 and 6.
 
 Frames are $S5_n$ (knowledge) or $KD45_n$ (belief); the latter requires every $R_i$ to be serial, which the product update does not preserve and must therefore repair.
 
@@ -308,7 +308,7 @@ Where preconditions are monotone the closure does discriminate. On `coin4` it se
 
 Neither is used by the automatic selector. `radd` is roughly neutral on the suite (within ±13 expansions of `ed` everywhere) at two to three times the per-node cost; `rpg`'s max aggregation collapses conjunctive goals and regresses `grapevine1` from 5 expansions to 279. Treat `rpg` as an admissible lower bound rather than a search guide.
 
-Two other routes to guidance exist in the literature. The epistemic planning graph of PG-EFP (Le, Fabiano, Son & Pontelli, ICAPS 2018) keeps e-states in its levels and proves that the first level possibly entailing the goal bounds plan length from below, for d-observable problems of $m\mathcal{A}^*$, where every agent fully observes an action or is oblivious to it. Learned estimates from graph neural networks over Kripke structures (Briglia, Fabiano & Mariani, 2025) guide search without such a bound.
+Related approaches to heuristic guidance include the epistemic planning graph of PG-EFP (Le, Fabiano, Son & Pontelli, ICAPS 2018), whose first level that possibly entails the goal is a lower bound on plan length for d-observable problems of $m\mathcal{A}^*$, in which every agent either fully observes an action or is oblivious to it, and heuristics learned by graph neural networks over Kripke structures (Briglia, Fabiano & Mariani, 2025), which provide no bound.
 
 ### 8.2 Search guidance is not this planner's bottleneck
 
