@@ -1,4 +1,5 @@
 #include "search.hpp"
+#include "hdelta.hpp"
 
 #include "bisimulation.hpp"
 #include "product_update.hpp"
@@ -143,6 +144,13 @@ find_path(const EpistemicState& root, const std::unordered_set<ActionIdx>& local
                 const std::uint32_t g = cur.g + 1;
                 const bool done = next.satisfies(*c.task.goal) || c.solved.count(nfp);
                 const float hv  = done ? 0.f : c.h(next, c.task);
+                // A proven dead end has no policy on any stack, so it is dead
+                // for the whole search, as an untainted failure would be.
+                if (!done && hdelta::prunes(c.task, next, hv)) {
+                    c.stats.record_prune(PruneReason::DeadEnd);
+                    c.dead.insert(nfp);
+                    continue;
+                }
                 nodes.push_back({done ? CompactState{} : CompactState::from(next), nfp, cur.idx, ai});
                 const auto idx = static_cast<std::uint32_t>(nodes.size() - 1);
 

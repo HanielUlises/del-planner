@@ -26,6 +26,7 @@ enum class PruneReason : std::uint8_t {
     Inapplicable,       // no designated event's precondition held anywhere
     WorldCapExceeded,   // |W| · |E| above the configured bound
     NonSerial,          // KD45 repair emptied the designated set
+    DeadEnd,            // h^Δ proves that no plan exists from the successor
 };
 
 [[nodiscard]] constexpr const char* prune_reason_name(PruneReason r) noexcept {
@@ -34,6 +35,7 @@ enum class PruneReason : std::uint8_t {
         case PruneReason::Inapplicable:     return "inapplicable";
         case PruneReason::WorldCapExceeded: return "world-cap";
         case PruneReason::NonSerial:        return "non-serial";
+        case PruneReason::DeadEnd:          return "dead-end";
     }
     return "?";
 }

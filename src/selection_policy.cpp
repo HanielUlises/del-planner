@@ -42,8 +42,8 @@ constexpr std::array<std::string_view, 13> kFeatureNames{
 
 constexpr std::array<std::string_view, 5> kStrategyLabels{"gbfs", "ehc", "aostar", "replan", "portfolio"};
 
-constexpr std::array<std::string_view, 8> kHeuristicLabels{
-    "ug", "ed", "ks", "wc", "rpg", "radd", "kadd", "kff"};
+constexpr std::array<std::string_view, 10> kHeuristicLabels{
+    "ug", "ed", "ks", "wc", "rpg", "radd", "kadd", "kff", "hd", "hdsum"};
 
 // A rule with no conditions is a terminal default; anything after it is dead.
 // Building rules by hand makes that easy to get wrong, so both the built-in

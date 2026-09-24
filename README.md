@@ -1,9 +1,9 @@
-# Aletheia
+# del-planner
 
-**Epistemic planner** for the International Epistemic Planning Competition (IεPC 2026), Tracks Basic and Intermediate.  
+**Epistemic planner** for planning tasks in Dynamic Epistemic Logic. The version submitted to the International Epistemic Planning Competition (IεPC 2026), Tracks Basic and Intermediate, under the name Aletheia, is kept at [ipc2026-epistemic/Aletheia](https://github.com/ipc2026-epistemic/Aletheia).  
 Built at **UNAM–FI** (Artificial Intelligence Microsoft Lab) / **IPN–ESCOM**.
 
-[![Release](https://github.com/HanielUlises/Aletheia/actions/workflows/release.yml/badge.svg)](https://github.com/HanielUlises/Aletheia/actions/workflows/release.yml)
+[![Release](https://github.com/HanielUlises/del-planner/actions/workflows/release.yml/badge.svg)](https://github.com/HanielUlises/del-planner/actions/workflows/release.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
 [![ICAPS 2026](https://img.shields.io/badge/ICAPS-2026%20Workshop-orange.svg)](https://www.icaps-conference.org/)
@@ -16,7 +16,7 @@ in [docs/usage.md](docs/usage.md); measured results are in
 
 ## Abstract
 
-Aletheia is a planner for Dynamic Epistemic Logic (DEL) planning tasks over $S5_n$ and $KD45_n$ frames. Its search space is not a set of propositional valuations but a set of *pointed Kripke models*, each of which must be updated, minimised and compared in full at every node. That makes the planner's performance a question of how a Kripke model is represented, how modal formulas are evaluated over it, and how two models are recognised as the same epistemic situation.
+The planner handles Dynamic Epistemic Logic (DEL) planning tasks over $S5_n$ and $KD45_n$ frames. Its search space is not a set of propositional valuations but a set of *pointed Kripke models*, each of which must be updated, minimised and compared in full at every node. That makes the planner's performance a question of how a Kripke model is represented, how modal formulas are evaluated over it, and how two models are recognised as the same epistemic situation.
 
 This document describes the design of the current implementation. Three decisions dominate it:
 
@@ -73,6 +73,8 @@ with the standard semantics, $\mathit{Kw}_i\varphi \equiv [i]\varphi \vee [i]\ne
 \mathcal{M} \models \varphi \quad\text{iff}\quad \mathcal{M}, w \models \varphi \ \text{ for every } w \in W^*.
 ```
 
+EPDDL group modalities follow plank's model checker and are evaluated agent by agent: $[G]\varphi$ is $\bigwedge_{i \in G} [i]\varphi$, and $\langle G\rangle\varphi$, $[\mathit{Kw}.G]\varphi$ and $\langle \mathit{Kw}.G\rangle\varphi$ are conjunctions over $G$. `C.box` and `C.diamond` denote common knowledge. Interpreting $[G]\varphi$ as $C_G\varphi$ strengthens the goal; the validator still accepts the resulting plans, and on IεPC selective-communication the plans for sc-05-06 and sc-06-07 had 4 270 and 24 259 steps, where the optimal lengths are 5 and 6.
+
 Frames are $S5_n$ (knowledge) or $KD45_n$ (belief); the latter requires every $R_i$ to be serial, which the product update does not preserve and must therefore repair.
 
 ### 2.2 Product update
@@ -100,7 +102,7 @@ Worlds $w, v$ of a multi-pointed model are **bisimilar** when
 2. $w \in W^* \iff v \in W^*$,
 3. for every $i \in Ag$, every $R_i$-successor of $w$ has a bisimilar $R_i$-successor of $v$, and symmetrically.
 
-Bisimilar worlds satisfy exactly the same formulas, so quotienting by bisimilarity preserves the truth of every goal and precondition. Condition (2) is not required for that preservation — bisimilar worlds agree on all formulas whether or not they agree on designation — but it *is* required for the quotient to determine $W^*$, and hence for the canonical form of §5 to be a sound identity test on planning situations. Aletheia includes it, accepting a possibly coarser contraction in exchange.
+Bisimilar worlds satisfy exactly the same formulas, so quotienting by bisimilarity preserves the truth of every goal and precondition. Condition (2) is not required for that preservation — bisimilar worlds agree on all formulas whether or not they agree on designation — but it *is* required for the quotient to determine $W^*$, and hence for the canonical form of §5 to be a sound identity test on planning situations. The planner includes it, accepting a possibly coarser contraction in exchange.
 
 ---
 
@@ -188,7 +190,7 @@ A formula of size $\lvert\varphi\rvert$ therefore costs $O(\lvert\varphi\rvert \
 
 ### 5.1 Why a canonical form
 
-Duplicate detection is the difference between a search space of thousands of states and one of millions. Two Kripke models that represent the same epistemic situation will generally have different world numberings. Aletheia therefore contracts *and* canonically labels in one pass, and identifies states by a 128-bit fingerprint of the resulting byte image.
+Duplicate detection is the difference between a search space of thousands of states and one of millions. Two Kripke models that represent the same epistemic situation will generally have different world numberings. The planner therefore contracts *and* canonically labels in one pass, and identifies states by a 128-bit fingerprint of the resulting byte image.
 
 ### 5.2 The algorithm
 
@@ -199,6 +201,8 @@ Contraction proceeds in three stages:
 3. **Quotient** — class $c$ becomes world $c$ of the result, and its successor sets — the classes of its representative's successors — are interned by content in (agent, class) order, which numbers the sets canonically as well.
 
 Each refinement round computes, for every distinct successor set $S$, the sorted list $N(S)$ of classes of its members, ranks the distinct lists by (size, contents), and keys each world by its class and the ranks of its agents' sets. The work per round is linear in the table rather than quadratic in $\lvert W\rvert$.
+
+Neither round orders its worlds by sorting them outright, because in both the key carries less information than $n \log n$ comparisons extract. Round 0 has one key per distinct valuation, and a model holds far fewer of those than worlds — a product update with no ontic effect reproduces every valuation once per event — so the worlds are hashed into groups and only the $d$ distinct keys are sorted. Round $k$ opens its key with the world's previous class, and refinement only splits within a class, so the order is the classes in sequence and then the ranks inside each; the class is a dense id and counting-sorts, leaving the comparison sort one run per class, runs that shrink to singletons as the partition nears its fixpoint. Both produce exactly the order the full sort would, so the canonical form is unchanged. On Gossip with 8 agents the two sorts fall from 22.5% of the planner's instruction count to 0.8%, for a 1.31× reduction overall.
 
 ### 5.3 Canonicity
 
@@ -303,6 +307,8 @@ The layer at which each goal conjunct first becomes true is then a step count, a
 Where preconditions are monotone the closure does discriminate. On `coin4` it separates the initial state from its successor, $2.0 \to 1.0$, where `ug`, `ed` and `ks` are all flat at $1.0$. That is real information, and it is why both remain available.
 
 Neither is used by the automatic selector. `radd` is roughly neutral on the suite (within ±13 expansions of `ed` everywhere) at two to three times the per-node cost; `rpg`'s max aggregation collapses conjunctive goals and regresses `grapevine1` from 5 expansions to 279. Treat `rpg` as an admissible lower bound rather than a search guide.
+
+Related approaches to heuristic guidance include the epistemic planning graph of PG-EFP (Le, Fabiano, Son & Pontelli, ICAPS 2018), whose first level that possibly entails the goal is a lower bound on plan length for d-observable problems of $m\mathcal{A}^*$, in which every agent either fully observes an action or is oblivious to it, and heuristics learned by graph neural networks over Kripke structures (Briglia, Fabiano & Mariani, 2025), which provide no bound.
 
 ### 8.2 Search guidance is not this planner's bottleneck
 
@@ -449,6 +455,8 @@ Notably absent: `std::mdspan`, which is the natural spelling for the $\lvert W\r
 - Paige & Tarjan. *Three Partition Refinement Algorithms*. SIAM Journal on Computing, 1987.
 - Hoffmann & Nebel. *The FF Planning System*. JAIR, 2001.
 - Hansen & Zilberstein. *LAO\*: A Heuristic Search Algorithm that Finds Solutions with Loops*. Artificial Intelligence, 2001.
+- Le, Fabiano, Son & Pontelli. *EFP and PG-EFP: Epistemic Forward Search Planners in Multi-Agent Domains*. ICAPS 2018. doi:10.1609/icaps.v28i1.13881
+- Briglia, Fabiano & Mariani. *Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics*. arXiv:2508.12840, 2025.
 
 ---
 
