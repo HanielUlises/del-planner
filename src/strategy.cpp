@@ -1,5 +1,6 @@
 #include "strategy.hpp"
 
+#include "hdelta.hpp"
 #include "knowledge_relaxation.hpp"
 
 std::unique_ptr<Heuristic> make_heuristic(const std::string& label,
@@ -13,6 +14,8 @@ std::unique_ptr<Heuristic> make_heuristic(const std::string& label,
     if (label == "kadd") return std::make_unique<KnowledgeRelaxationHeuristic>(task);
     if (label == "kff")  return std::make_unique<KnowledgeRelaxationHeuristic>(
                              task, KnowledgeRelaxationHeuristic::Estimate::FF);
+    if (label == "hd")    return std::make_unique<hdelta::DistinguishabilityHeuristic>(false);
+    if (label == "hdsum") return std::make_unique<hdelta::DistinguishabilityHeuristic>(true);
     return nullptr;
 }
 
@@ -25,6 +28,8 @@ const char* heuristic_display(const std::string& label) {
     if (label == "radd") return "relaxed-closure (add)";
     if (label == "kadd") return "knowledge-relaxation (add)";
     if (label == "kff")  return "knowledge-relaxation (ff)";
+    if (label == "hd")    return "distinguishability (admissible)";
+    if (label == "hdsum") return "distinguishability (sum)";
     return "unknown";
 }
 

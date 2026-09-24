@@ -22,6 +22,7 @@ set(CORE_SOURCES
     src/json.cpp
     src/product_update.cpp
     src/bisimulation.cpp
+    src/hdelta.cpp
     src/heuristic.cpp
     src/knowledge_relaxation.cpp
     src/selection_policy.cpp

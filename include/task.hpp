@@ -5,6 +5,14 @@
 
 struct AgentSymmetry;
 
+// Where the searches test for provable dead ends with h^Δ (hdelta.hpp).
+enum class DeadEndCheck : std::uint8_t {
+    Off,        // never
+    Root,       // the initial state only
+    Suspect,    // the initial state, and nodes the heuristic reports as relaxation-dead
+    All,        // every generated node
+};
+
 struct PlanningTask {
     // Language
     std::vector<std::string> atom_names;
@@ -25,6 +33,11 @@ struct PlanningTask {
 
     // GBFS expands the heuristic's preferred actions first.
     bool helpful_actions = true;
+
+    // Dead-end detection with h^Δ; Suspect checks nodes whose heuristic value
+    // is at least dead_end_suspect, the per-conjunct penalty of kadd and kff.
+    DeadEndCheck dead_end_check = DeadEndCheck::Suspect;
+    float        dead_end_suspect = 1000.f;
 
     [[nodiscard]] bool repair_seriality() const noexcept { return kd45 && kd45_repair; }
 

@@ -1,3 +1,5 @@
+#include "hdelta.hpp"
+#include "bisimulation.hpp"
 #include "parser.hpp"
 #include "validator.hpp"
 #include "search.hpp"
@@ -88,6 +90,7 @@ static void usage(const char* prog) {
         << "  --kd45-repair  Delete non-serial worlds after KD45 updates\n"
         << "  --no-portfolio Auto-selected AO* keeps the whole budget\n"
         << "  --no-helpful   GBFS expands every action, not preferred ones first\n"
+        << "  --dead-ends M  h^Δ dead-end detection: off, root, suspect (default), all\n"
         << "  --signature    Print the task's structural signature as JSON and exit\n"
         << "  --threads      Worker threads (default: all cores; 1 = serial)\n"
         << "  --help         Show this message\n";
@@ -114,6 +117,7 @@ int main(int argc, char* argv[]) {
     bool portfolio_on = true;
     bool helpful_on   = true;
     bool signature    = false;
+    std::string dead_ends = "suspect";
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -135,6 +139,7 @@ int main(int argc, char* argv[]) {
         else if (arg == "--no-portfolio") portfolio_on      = false;
         else if (arg == "--no-helpful")   helpful_on        = false;
         else if (arg == "--signature")    signature         = true;
+        else if (arg == "--dead-ends" && i+1 < argc) dead_ends  = argv[++i];
         else if (arg == "--threads"   && i+1 < argc) par::set_threads(std::stoul(argv[++i]));
         else if (arg == "--help" || arg == "-h") { usage(argv[0]); return 0; }
         else {
@@ -261,6 +266,27 @@ int main(int argc, char* argv[]) {
     if (!out.is_open()) {
         std::cerr << "Error: cannot open output file: " << plan_path << "\n";
         return 1;
+    }
+
+    // Dead ends (hdelta.hpp). h^Δ(s0) = ∞ proves that no plan and no policy
+    // exists; the root test gets at most a tenth of the time limit, and an
+    // unfinished test proves nothing.
+    if      (dead_ends == "off")     task.dead_end_check = DeadEndCheck::Off;
+    else if (dead_ends == "root")    task.dead_end_check = DeadEndCheck::Root;
+    else if (dead_ends == "suspect") task.dead_end_check = DeadEndCheck::Suspect;
+    else if (dead_ends == "all")     task.dead_end_check = DeadEndCheck::All;
+    else { std::cerr << "Error: --dead-ends expects off, root, suspect or all\n"; return 1; }
+    if (task.dead_end_check != DeadEndCheck::Off) {
+        const auto budget = timeout_secs > 0 ? std::chrono::milliseconds(timeout_secs * 100)
+                                             : std::chrono::milliseconds(30'000);
+        const auto root = hdelta::h_delta_until(task, bisim_contract(task.init),
+                                                std::min(deadline, Clock::now() + budget));
+        if (root && *root == hdelta::kInf) {
+            out << "null\n";
+            std::cerr << "[hdelta] No solution exists: the relaxation proves the goal unreachable.\n";
+            return 0;
+        }
+        if (root) std::cerr << "[hdelta] h(s0) = " << *root << "\n";
     }
 
     if (strategy == Strategy::PORTFOLIO) {

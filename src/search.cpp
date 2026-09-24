@@ -1,4 +1,5 @@
 #include "search.hpp"
+#include "hdelta.hpp"
 
 #include "bisimulation.hpp"
 #include "parallel.hpp"
@@ -100,7 +101,8 @@ void build_successor(const EpistemicState& parent, const Action& action,
     out.fp    = out.state.fingerprint();
     out.goal  = out.state.satisfies(*task.goal);
     if (!out.goal && !closed.contains(out.fp)) {
-        out.h       = h(out.state, task);
+        out.h = h(out.state, task);
+        if (hdelta::prunes(task, out.state, out.h)) { out.pruned = PruneReason::DeadEnd; return; }
         out.compact = CompactState::from(out.state);
     }
     out.state = EpistemicState{};
@@ -469,13 +471,22 @@ std::vector<Expansion> expand(const EpistemicState& s, Context& ctx) {
         e.action = ai;
         e.branches.reserve(branches.size());
 
+        // A branch without a plan makes the action useless for any policy.
         float worst = 0.f;
+        bool  dead  = false;
         for (auto& [eid, bstate] : branches) {
             EpistemicState contracted = bisim_contract(std::move(bstate));
             ctx.stats.heuristic_calls++;
-            worst = std::max(worst, ctx.h(contracted, ctx.task));
+            const float hv = ctx.h(contracted, ctx.task);
+            if (!contracted.satisfies(*ctx.task.goal) && hdelta::prunes(ctx.task, contracted, hv)) {
+                ctx.stats.record_prune(PruneReason::DeadEnd);
+                dead = true;
+                break;
+            }
+            worst = std::max(worst, hv);
             e.branches.emplace_back(eid, std::move(contracted));
         }
+        if (dead) continue;
 
         e.h = worst;
         ctx.stats.nodes_generated += e.branches.size();
@@ -739,6 +750,7 @@ std::optional<SearchResult> search(const PlanningTask& task, const Heuristic& h,
 
             result.stats.heuristic_calls++;
             const float hv = h(next, task);
+            if (hdelta::prunes(task, next, hv)) { result.stats.record_prune(PruneReason::DeadEnd); continue; }
             result.stats.final_h = hv;
             if (hv < result.stats.best_h) {
                 result.stats.best_h = hv;
@@ -805,6 +817,7 @@ std::optional<SearchResult> search(const PlanningTask& task, const Heuristic& h,
 
                 result.stats.heuristic_calls++;
                 const float nh = at_goal ? 0.f : h(next, task);
+                if (!at_goal && hdelta::prunes(task, next, nh)) { result.stats.record_prune(PruneReason::DeadEnd); continue; }
                 result.stats.final_h = nh;
                 if (nh < result.stats.best_h) {
                     result.stats.best_h = nh;
