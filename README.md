@@ -1,9 +1,9 @@
-# Aletheia
+# del-planner
 
-**Epistemic planner** for the International Epistemic Planning Competition (IεPC 2026), Tracks Basic and Intermediate.  
+**Epistemic planner** for planning tasks in Dynamic Epistemic Logic. The version submitted to the International Epistemic Planning Competition (IεPC 2026), Tracks Basic and Intermediate, under the name Aletheia, is kept at [ipc2026-epistemic/Aletheia](https://github.com/ipc2026-epistemic/Aletheia).  
 Built at **UNAM–FI** (Artificial Intelligence Microsoft Lab) / **IPN–ESCOM**.
 
-[![Release](https://github.com/HanielUlises/Aletheia/actions/workflows/release.yml/badge.svg)](https://github.com/HanielUlises/Aletheia/actions/workflows/release.yml)
+[![Release](https://github.com/HanielUlises/del-planner/actions/workflows/release.yml/badge.svg)](https://github.com/HanielUlises/del-planner/actions/workflows/release.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
 [![ICAPS 2026](https://img.shields.io/badge/ICAPS-2026%20Workshop-orange.svg)](https://www.icaps-conference.org/)
@@ -16,7 +16,7 @@ in [docs/usage.md](docs/usage.md); measured results are in
 
 ## Abstract
 
-Aletheia is a planner for Dynamic Epistemic Logic (DEL) planning tasks over $S5_n$ and $KD45_n$ frames. Its search space is not a set of propositional valuations but a set of *pointed Kripke models*, each of which must be updated, minimised and compared in full at every node. That makes the planner's performance a question of how a Kripke model is represented, how modal formulas are evaluated over it, and how two models are recognised as the same epistemic situation.
+The planner handles Dynamic Epistemic Logic (DEL) planning tasks over $S5_n$ and $KD45_n$ frames. Its search space is not a set of propositional valuations but a set of *pointed Kripke models*, each of which must be updated, minimised and compared in full at every node. That makes the planner's performance a question of how a Kripke model is represented, how modal formulas are evaluated over it, and how two models are recognised as the same epistemic situation.
 
 This document describes the design of the current implementation. Three decisions dominate it:
 
@@ -102,7 +102,7 @@ Worlds $w, v$ of a multi-pointed model are **bisimilar** when
 2. $w \in W^* \iff v \in W^*$,
 3. for every $i \in Ag$, every $R_i$-successor of $w$ has a bisimilar $R_i$-successor of $v$, and symmetrically.
 
-Bisimilar worlds satisfy exactly the same formulas, so quotienting by bisimilarity preserves the truth of every goal and precondition. Condition (2) is not required for that preservation — bisimilar worlds agree on all formulas whether or not they agree on designation — but it *is* required for the quotient to determine $W^*$, and hence for the canonical form of §5 to be a sound identity test on planning situations. Aletheia includes it, accepting a possibly coarser contraction in exchange.
+Bisimilar worlds satisfy exactly the same formulas, so quotienting by bisimilarity preserves the truth of every goal and precondition. Condition (2) is not required for that preservation — bisimilar worlds agree on all formulas whether or not they agree on designation — but it *is* required for the quotient to determine $W^*$, and hence for the canonical form of §5 to be a sound identity test on planning situations. The planner includes it, accepting a possibly coarser contraction in exchange.
 
 ---
 
@@ -190,7 +190,7 @@ A formula of size $\lvert\varphi\rvert$ therefore costs $O(\lvert\varphi\rvert \
 
 ### 5.1 Why a canonical form
 
-Duplicate detection is the difference between a search space of thousands of states and one of millions. Two Kripke models that represent the same epistemic situation will generally have different world numberings. Aletheia therefore contracts *and* canonically labels in one pass, and identifies states by a 128-bit fingerprint of the resulting byte image.
+Duplicate detection is the difference between a search space of thousands of states and one of millions. Two Kripke models that represent the same epistemic situation will generally have different world numberings. The planner therefore contracts *and* canonically labels in one pass, and identifies states by a 128-bit fingerprint of the resulting byte image.
 
 ### 5.2 The algorithm
 
