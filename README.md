@@ -2,6 +2,7 @@
 
 **Epistemic planner** for planning tasks in Dynamic Epistemic Logic. The version submitted to the International Epistemic Planning Competition (IεPC 2026), Tracks Basic and Intermediate, under the name Aletheia, is kept at [ipc2026-epistemic/Aletheia](https://github.com/ipc2026-epistemic/Aletheia).  
 Built at **UNAM–FI** (Artificial Intelligence Microsoft Lab)
+
 [![Release](https://github.com/HanielUlises/del-planner/actions/workflows/release.yml/badge.svg)](https://github.com/HanielUlises/del-planner/actions/workflows/release.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
