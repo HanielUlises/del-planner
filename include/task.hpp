@@ -31,6 +31,12 @@ struct PlanningTask {
     // repair rejects belief-contradicting events such as deception.
     bool kd45_repair = false;
 
+    // Refuse every state in which an agent believes a contradiction at a world
+    // the designated ones can reach, so that no goal, precondition or
+    // observability condition is satisfied for want of a world to check. Off by
+    // default: coin-in-the-box's reference plans rely on such states.
+    bool consistent_beliefs = false;
+
     // GBFS expands the heuristic's preferred actions first.
     bool helpful_actions = true;
 
@@ -40,6 +46,13 @@ struct PlanningTask {
     float        dead_end_suspect = 1000.f;
 
     [[nodiscard]] bool repair_seriality() const noexcept { return kd45 && kd45_repair; }
+
+    // Repair leaves every surviving world serial, so it subsumes the check.
+    [[nodiscard]] Seriality seriality() const noexcept
+    {
+        if (repair_seriality()) return Seriality::Repair;
+        return consistent_beliefs ? Seriality::Require : Seriality::Ignore;
+    }
 
     // True iff at least one action has agents with heterogeneous observability
     // (some Fully, some Oblivious or conditional). Set by the parser after all

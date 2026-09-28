@@ -88,6 +88,8 @@ static void usage(const char* prog) {
         << "  --conditional  Force AO* (alias for --strategy aostar)\n"
         << "  --no-symmetry  Disable agent-symmetry pruning\n"
         << "  --kd45-repair  Delete non-serial worlds after KD45 updates\n"
+        << "  --consistent-beliefs\n"
+        << "                 Refuse states in which an agent believes a contradiction\n"
         << "  --no-portfolio Auto-selected AO* keeps the whole budget\n"
         << "  --no-helpful   GBFS expands every action, not preferred ones first\n"
         << "  --dead-ends M  h^Δ dead-end detection: off, root, suspect (default), all\n"
@@ -114,6 +116,7 @@ int main(int argc, char* argv[]) {
     bool explain      = false;
     bool symmetry     = true;
     bool kd45_repair  = false;
+    bool consistent   = false;
     bool portfolio_on = true;
     bool helpful_on   = true;
     bool signature    = false;
@@ -136,6 +139,7 @@ int main(int argc, char* argv[]) {
         else if (arg == "--gbfs")         strategy_name_arg = "gbfs";
         else if (arg == "--no-symmetry")  symmetry          = false;
         else if (arg == "--kd45-repair")  kd45_repair       = true;
+        else if (arg == "--consistent-beliefs") consistent  = true;
         else if (arg == "--no-portfolio") portfolio_on      = false;
         else if (arg == "--no-helpful")   helpful_on        = false;
         else if (arg == "--signature")    signature         = true;
@@ -179,8 +183,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    task.kd45_repair     = kd45_repair;
-    task.helpful_actions = helpful_on;
+    task.kd45_repair        = kd45_repair;
+    task.consistent_beliefs = consistent;
+    task.helpful_actions    = helpful_on;
     const TaskFeatures features = TaskFeatures::extract(task);
 
     if (symmetry) {

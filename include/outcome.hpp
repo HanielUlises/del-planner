@@ -27,6 +27,7 @@ enum class PruneReason : std::uint8_t {
     WorldCapExceeded,   // |W| · |E| above the configured bound
     NonSerial,          // KD45 repair emptied the designated set
     DeadEnd,            // h^Δ proves that no plan exists from the successor
+    Inconsistent,       // an agent reachable from W* believes a contradiction
 };
 
 [[nodiscard]] constexpr const char* prune_reason_name(PruneReason r) noexcept {
@@ -36,6 +37,7 @@ enum class PruneReason : std::uint8_t {
         case PruneReason::WorldCapExceeded: return "world-cap";
         case PruneReason::NonSerial:        return "non-serial";
         case PruneReason::DeadEnd:          return "dead-end";
+        case PruneReason::Inconsistent:     return "inconsistent";
     }
     return "?";
 }

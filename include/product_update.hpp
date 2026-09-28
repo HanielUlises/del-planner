@@ -4,6 +4,7 @@
 #include "state.hpp"
 #include "world_cap_policy.hpp"
 
+#include <optional>
 #include <vector>
 
 // Result of a DEL product update: the updated state together with the dense
@@ -29,20 +30,31 @@ struct ProductUpdateResult {
     }
 };
 
+// An agent with no accessible world at a world that formulas evaluated at W*
+// can reach, which is every world reachable from W* along any agent's
+// relation. Truth at W* depends on those worlds alone, so a state without one
+// satisfies no formula vacuously. Returns the first found, in breadth-first
+// order from W*.
+struct BeliefCollapse {
+    AgentIdx agent;
+    WorldIdx world;
+};
+[[nodiscard]] std::optional<BeliefCollapse> find_collapse(const EpistemicState& s);
+
 // Compute s ⊗ a (DEL product update).
 [[nodiscard]] Outcome<ProductUpdateResult>
 product_update_with_map(const EpistemicState& s, const Action& a,
-                        bool enforce_kd45 = false,
+                        Seriality seriality = Seriality::Ignore,
                         const WorldCapPolicy& cap = make_world_cap_policy(false));
 
 [[nodiscard]] Outcome<EpistemicState>
 product_update(const EpistemicState& s, const Action& a,
-               bool enforce_kd45 = false,
+               Seriality seriality = Seriality::Ignore,
                const WorldCapPolicy& cap = make_world_cap_policy(false));
 
 // Sensing update: one state per designated event, all sharing the same product
 // model and differing only in which worlds are designated.
 [[nodiscard]] std::vector<std::pair<EventIdx, EpistemicState>>
 product_update_split(const EpistemicState& s, const Action& a,
-                     bool enforce_kd45 = false,
+                     Seriality seriality = Seriality::Ignore,
                      const WorldCapPolicy& cap = make_world_cap_policy(false));
