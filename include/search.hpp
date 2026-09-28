@@ -28,6 +28,7 @@ struct PlannerStats {
 
     std::size_t pruned_world_cap{0};
     std::size_t pruned_non_serial{0};
+    std::size_t pruned_inconsistent{0};
     std::size_t pruned_dead_end{0};      // h^Δ proved no plan exists
     std::size_t pruned_inapplicable{0};
     std::size_t pruned_symmetric{0};
@@ -65,6 +66,7 @@ struct PlannerStats {
             case PruneReason::WorldCapExceeded: ++pruned_world_cap;    break;
             case PruneReason::NonSerial:        ++pruned_non_serial;   break;
             case PruneReason::DeadEnd:          ++pruned_dead_end;     break;
+            case PruneReason::Inconsistent:     ++pruned_inconsistent; break;
             case PruneReason::Inapplicable:     ++pruned_inapplicable; break;
             case PruneReason::None:                                    break;
         }

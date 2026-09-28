@@ -36,6 +36,11 @@ jobs:
         # on that basis; producing a plan for one is a failure.
         run: ./build_test.sh --no-build --timeout 60
 
+      - name: Consistent beliefs
+        # The plans a collapsed belief would credit, and the honest ones that
+        # must still be found with --consistent-beliefs on.
+        run: tests/consistent-beliefs/run.sh
+
       - name: Selection policy round-trip
         # The built-in policy must survive a dump/reload cycle: --print-policy
         # output is the documented starting point for retuning, so if it does

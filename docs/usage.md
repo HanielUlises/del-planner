@@ -82,6 +82,7 @@ holds `null`. An empty array means the goal already held.
 | `--no-symmetry` | Disable agent-symmetry pruning (on by default) |
 | `--threads <n>` | Worker threads for successor generation. Default: all cores; 1 = serial |
 | `--kd45-repair` | Delete non-serial worlds after KD45 updates. Off by default, matching plank |
+| `--consistent-beliefs` | Refuse any state in which an agent believes a contradiction. Off by default, matching plank; see below |
 | `--no-portfolio` | Auto-selected AO\* on sensing tasks keeps the whole budget instead of handing over to replan |
 | `--no-helpful` | GBFS expands every action instead of the relaxed plan's helpful actions first |
 | `--signature` | Print the task's structural signature (topology, fixed-point depths, growth, symmetry) as JSON and exit |
@@ -89,6 +90,25 @@ holds `null`. An empty array means the goal already held.
 
 An unknown heuristic or strategy label is an error listing the valid ones, not
 a silent fallback.
+
+### Consistent beliefs
+
+An agent that observes an event its beliefs rule out is left with no accessible
+world. In coin-in-the-box, B misses A's peek, believes A ignorant, and then
+hears A announce tails. From that point `[B]φ` holds for every φ, and a goal
+about what B believes is satisfied by a model that says nothing about it. The
+IεPC reference plan for `coin4` reaches its goal this way, and so does the
+default plan for `tests/consistent-beliefs/two-sites.json`, which never visits
+the south site that half of its goal is about.
+
+`--consistent-beliefs` refuses every product in which an agent has no
+accessible world at a world reachable from the designated ones, and the
+validator rejects a plan that passes through one, naming the agent. It is off
+by default because plank accepts such plans. A system that executes the plan
+should turn it on: a robot credited with a belief it cannot hold has not
+learned anything. On the smoke suite every instance still solves; `coin4`,
+`coin5` and `depot3` need longer plans, since their shortest ones depend on
+a collapsed belief.
 
 ### Wrapper scripts
 

@@ -94,7 +94,7 @@ void build_successor(const EpistemicState& parent, const Action& action,
     if (!action.applicable(parent)) return;
     out.applicable = true;
 
-    auto maybe = product_update(parent, action, task.repair_seriality(), cap);
+    auto maybe = product_update(parent, action, task.seriality(), cap);
     if (!maybe) { out.pruned = maybe.error(); return; }
 
     out.state = bisim_contract(std::move(*maybe));
@@ -464,7 +464,7 @@ std::vector<Expansion> expand(const EpistemicState& s, Context& ctx) {
         if (!keep(ctx.task, stab, ai, ctx.stats)) continue;
         if (!a.applicable(s)) continue;
 
-        auto branches = product_update_split(s, a, ctx.task.repair_seriality(), ctx.cap);
+        auto branches = product_update_split(s, a, ctx.task.seriality(), ctx.cap);
         if (branches.empty()) continue;
 
         Expansion e;
@@ -732,7 +732,7 @@ std::optional<SearchResult> search(const PlanningTask& task, const Heuristic& h,
             if (!keep(task, stab, ai, result.stats)) continue;
             if (!action.applicable(nodes[cur_idx].state)) continue;
 
-            auto maybe = product_update(nodes[cur_idx].state, action, task.repair_seriality(), cap);
+            auto maybe = product_update(nodes[cur_idx].state, action, task.seriality(), cap);
             if (!maybe) { result.stats.record_prune(maybe.error()); continue; }
 
             EpistemicState next = bisim_contract(std::move(*maybe));
@@ -807,7 +807,7 @@ std::optional<SearchResult> search(const PlanningTask& task, const Heuristic& h,
                 if (!keep(task, stab, ai, result.stats)) continue;
                 if (!action.applicable(nodes[node_idx].state)) continue;
 
-                auto maybe = product_update(nodes[node_idx].state, action, task.repair_seriality(), cap);
+                auto maybe = product_update(nodes[node_idx].state, action, task.seriality(), cap);
                 if (!maybe) { result.stats.record_prune(maybe.error()); continue; }
 
                 EpistemicState next = bisim_contract(std::move(*maybe));

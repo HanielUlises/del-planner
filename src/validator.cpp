@@ -1,7 +1,9 @@
 #include "validator.hpp"
 #include "product_update.hpp"
 #include "bisimulation.hpp"
+#include <optional>
 #include <sstream>
+#include <string>
 #include <unordered_set>
 
 namespace {
@@ -14,6 +16,16 @@ struct VisitHash {
 };
 using Visited = std::unordered_set<std::pair<const PlanNode*, Fingerprint>, VisitHash>;
 
+// A state in which some agent believes a contradiction, named for the error
+// message, or nothing. Only asked when the task requires consistent beliefs.
+std::optional<std::string> collapse(const EpistemicState& s, const PlanningTask& task) {
+    if (task.seriality() != Seriality::Require) return std::nullopt;
+    const auto c = find_collapse(s);
+    if (!c) return std::nullopt;
+    return "agent " + task.agent_names[c->agent] +
+           " believes a contradiction at world " + std::to_string(c->world);
+}
+
 } // namespace
 
 static void replay(const EpistemicState& s,
@@ -21,6 +33,15 @@ static void replay(const EpistemicState& s,
                    const PlanningTask& task,
                    ValidationResult& result,
                    Visited& visited) {
+
+    // Checked here and not left to the update, so that the error names the
+    // agent. Every state the plan reaches passes through this point, the
+    // initial one included.
+    if (auto why = collapse(s, task)) {
+        result.valid = false;
+        result.error = *why;
+        return;
+    }
 
     // Null node means this branch is at goal
     if (!node) {
@@ -56,7 +77,9 @@ static void replay(const EpistemicState& s,
 
     // Split product update — one branch per designated event. Uses the task's
     // frame and no world cap: validity must not depend on search limits.
-    auto branches = product_update_split(s, *action, task.repair_seriality(), make_world_cap_policy(true));
+    const Seriality seriality = task.seriality() == Seriality::Require ? Seriality::Ignore
+                                                                         : task.seriality();
+    auto branches = product_update_split(s, *action, seriality, make_world_cap_policy(true));
     if (branches.empty()) {
         result.valid = false;
         result.error = "product_update_split returned empty for: " + node->action;
@@ -97,7 +120,10 @@ ValidationResult validate(const PlanningTask& task,
     if (!plan_tree) {
         // Empty plan — goal must hold in initial state
         result.leaves_reached = 1;
-        if (!init.satisfies(*task.goal)) {
+        if (auto why = collapse(init, task)) {
+            result.valid = false;
+            result.error = *why;
+        } else if (!init.satisfies(*task.goal)) {
             result.valid = false;
             result.error = "Empty plan but initial state does not satisfy goal";
         }

@@ -161,9 +161,29 @@ std::vector<bits::Word> serial_core(const EpistemicState& s) {
 
 } // namespace
 
+std::optional<BeliefCollapse> find_collapse(const EpistemicState& s) {
+    std::vector<std::uint8_t> empty(s.num_sets());
+    for (std::uint32_t id = 0; id < s.num_sets(); ++id) empty[id] = s.set(id).empty();
+
+    std::vector<bits::Word> seen(s.rel_words, 0);
+    std::vector<WorldIdx>   queue;
+    for (WorldIdx w = 0; w < s.num_worlds; ++w)
+        if (s.is_designated(w)) { bits::set(seen, w); queue.push_back(w); }
+
+    for (std::size_t head = 0; head < queue.size(); ++head) {
+        const WorldIdx w = queue[head];
+        for (AgentIdx ag = 0; ag < s.num_agents; ++ag) {
+            if (empty[s.succ_set(ag, w)]) return BeliefCollapse{ag, w};
+            for (WorldIdx v : s.succ(ag, w))
+                if (!bits::test(seen, v)) { bits::set(seen, v); queue.push_back(v); }
+        }
+    }
+    return std::nullopt;
+}
+
 Outcome<ProductUpdateResult>
 product_update_with_map(const EpistemicState& s, const Action& a,
-                        bool enforce_kd45, const WorldCapPolicy& cap) {
+                        Seriality seriality, const WorldCapPolicy& cap) {
     const std::uint32_t nw = s.num_worlds;
     const std::uint32_t na = s.num_agents;
     const std::uint32_t ne = static_cast<std::uint32_t>(a.events.size());
@@ -281,8 +301,14 @@ product_update_with_map(const EpistemicState& s, const Action& a,
 
     result.invalidate();
 
+    // An agent that observed an event its beliefs rule out is left with no
+    // world at all. The check covers every world reachable from W*, because a
+    // nested belief such as [i][j]φ is vacuous wherever j has no world.
+    if (seriality == Seriality::Require && find_collapse(result))
+        return pruned<ProductUpdateResult>(PruneReason::Inconsistent);
+
     // KD45 repair.
-    if (enforce_kd45) {
+    if (seriality == Seriality::Repair) {
         const auto alive = serial_core(result);
 
         if (bits::count(alive) != result.num_worlds) {
@@ -307,8 +333,8 @@ product_update_with_map(const EpistemicState& s, const Action& a,
 
 Outcome<EpistemicState>
 product_update(const EpistemicState& s, const Action& a,
-               bool enforce_kd45, const WorldCapPolicy& cap) {
-    auto res = product_update_with_map(s, a, enforce_kd45, cap);
+               Seriality seriality, const WorldCapPolicy& cap) {
+    auto res = product_update_with_map(s, a, seriality, cap);
     if (!res) return pruned<EpistemicState>(res.error());
     return ok(std::move(res->state));
 }
@@ -323,8 +349,8 @@ product_update(const EpistemicState& s, const Action& a,
 // different worlds.
 std::vector<std::pair<EventIdx, EpistemicState>>
 product_update_split(const EpistemicState& s, const Action& a,
-                     bool enforce_kd45, const WorldCapPolicy& cap) {
-    auto full = product_update_with_map(s, a, enforce_kd45, cap);
+                     Seriality seriality, const WorldCapPolicy& cap) {
+    auto full = product_update_with_map(s, a, seriality, cap);
     if (!full) return {};
 
     const EpistemicState& model = full->state;
