@@ -2,6 +2,7 @@
 #include "bisimulation.hpp"
 #include "parser.hpp"
 #include "validator.hpp"
+#include "product_update.hpp"
 #include "search.hpp"
 #include "heuristic.hpp"
 #include "selection_policy.hpp"
@@ -94,6 +95,9 @@ static void usage(const char* prog) {
         << "  --no-helpful   GBFS expands every action, not preferred ones first\n"
         << "  --dead-ends M  h^Δ dead-end detection: off, root, suspect (default), all\n"
         << "  --signature    Print the task's structural signature as JSON and exit\n"
+        << "  --subjective A Branch only on what agent A observes: events A cannot tell\n"
+        << "                 apart share one branch. 'auto': each action on what its\n"
+        << "                 actor, the first agent it names, observes\n"
         << "  --threads      Worker threads (default: all cores; 1 = serial)\n"
         << "  --help         Show this message\n";
 }
@@ -121,6 +125,7 @@ int main(int argc, char* argv[]) {
     bool helpful_on   = true;
     bool signature    = false;
     std::string dead_ends = "suspect";
+    std::string subjective;   // empty = one branch per designated event
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -143,6 +148,7 @@ int main(int argc, char* argv[]) {
         else if (arg == "--no-portfolio") portfolio_on      = false;
         else if (arg == "--no-helpful")   helpful_on        = false;
         else if (arg == "--signature")    signature         = true;
+        else if (arg == "--subjective" && i+1 < argc) subjective = argv[++i];
         else if (arg == "--dead-ends" && i+1 < argc) dead_ends  = argv[++i];
         else if (arg == "--threads"   && i+1 < argc) par::set_threads(std::stoul(argv[++i]));
         else if (arg == "--help" || arg == "-h") { usage(argv[0]); return 0; }
@@ -181,6 +187,23 @@ int main(int argc, char* argv[]) {
     } catch (const std::exception& e) {
         std::cerr << "Error loading task: " << e.what() << "\n";
         return 1;
+    }
+
+    if (subjective == "auto") {
+        set_branching_agents(task.agent_names);
+        symmetry = false;
+        std::cerr << "[main] Subjective branching: each action branches on what its actor observes\n";
+    } else if (!subjective.empty()) {
+        const auto& names = task.agent_names;
+        const auto it = std::find(names.begin(), names.end(), subjective);
+        if (it == names.end()) {
+            std::cerr << "Error: --subjective names no agent of the task: " << subjective << "\n";
+            return 1;
+        }
+        set_branching_agent(static_cast<AgentIdx>(it - names.begin()));
+        // An agent swap would carry the branching agent's perspective onto another's.
+        symmetry = false;
+        std::cerr << "[main] Subjective branching: policies branch on what " << subjective << " observes\n";
     }
 
     task.kd45_repair        = kd45_repair;
