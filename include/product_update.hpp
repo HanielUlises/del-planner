@@ -52,8 +52,29 @@ product_update(const EpistemicState& s, const Action& a,
                Seriality seriality = Seriality::Ignore,
                const WorldCapPolicy& cap = make_world_cap_policy(false));
 
+// Subjective branching. When an agent is set, product_update_split no longer
+// gives one branch per designated event: events whose designated worlds the
+// agent cannot tell apart, by its own relation in the product model, share one
+// branch, designated in all of them, tagged by the least event among them. A
+// policy then branches only on what the agent executing it observes, and an
+// outcome it cannot see -- another agent moving while it drives -- stays
+// uncertainty in the state instead of becoming a branch it could not follow.
+// Unset, the default, keeps one branch per designated event.
+//
+// set_branching_agents instead makes the branching agent per action: the first
+// agent named in the grounded action's name after its schema, so that
+// "watch_r2_r1" branches on what r2 observes and "say-w_r1_r2_r3" on what r1
+// does. That is the convention of every domain written for ePlanSys, whose
+// first agent parameter is the one acting.
+void set_branching_agent(std::optional<AgentIdx> agent);
+void set_branching_agents(std::vector<std::string> agent_names);
+[[nodiscard]] std::optional<AgentIdx> branching_agent();
+[[nodiscard]] std::optional<AgentIdx> branching_agent_of(const std::string& action_name);
+
 // Sensing update: one state per designated event, all sharing the same product
-// model and differing only in which worlds are designated.
+// model and differing only in which worlds are designated; under subjective
+// branching, one state per class of events the branching agent cannot tell
+// apart.
 [[nodiscard]] std::vector<std::pair<EventIdx, EpistemicState>>
 product_update_split(const EpistemicState& s, const Action& a,
                      Seriality seriality = Seriality::Ignore,
