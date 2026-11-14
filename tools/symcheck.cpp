@@ -37,22 +37,39 @@ int main(int argc, char** argv) {
     if (argc < 3) { std::cerr << "usage: symcheck task.json plan.json [--enum N] [--no-explicit] [--hidden-bottom]\n"; return 2; }
     std::size_t enum_limit = 3000;
     bool run_explicit = true, htop = true;
+    const char* plank_init = nullptr;
     for (int i = 3; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--enum")) enum_limit = std::stoul(argv[++i]);
         else if (!std::strcmp(argv[i], "--no-explicit")) run_explicit = false;
         else if (!std::strcmp(argv[i], "--hidden-bottom")) htop = false;
+        else if (!std::strcmp(argv[i], "--plank-init")) plank_init = argv[++i];
     }
     std::cerr.setstate(std::ios::failbit);          // silence the parser
     const PlanningTask t = load_task(argv[1]);
     std::cerr.clear();
     if (t.repair_seriality()) { std::cout << "{\"summary\":true,\"error\":\"seriality repair unsupported\"}\n"; return 1; }
-    const auto plan = read_plan(argv[2]);
+    const auto plan = std::strcmp(argv[2], "-") ? read_plan(argv[2]) : std::vector<std::string>{};
+    if (t.theory && t.init.num_worlds == 0) run_explicit = false;   // not materialised
 
     sym::Engine eng(t, htop);
     double tsym = 0, texp = 0;
     auto t0 = std::chrono::steady_clock::now();
-    sym::SymState S = eng.contract(eng.from_explicit(t.init));
+    sym::SymState S = eng.contract(t.theory ? eng.from_theory(*t.theory) : eng.from_explicit(t.init));
     tsym += secs(t0);
+    if (plank_init) {
+        std::cerr.setstate(std::ios::failbit);
+        const PlanningTask p = load_task(plank_init);
+        std::cerr.clear();
+        const EpistemicState kp = bisim_contract(p.init);
+        const bool mat_ok = t.init.num_worlds == 0 || bisim_contract(t.init) == kp;
+        const bool sym_ok = eng.worlds(S) <= double(enum_limit) ? bisim_contract(eng.explicit_state(S)) == kp
+                                                                 : eng.worlds(S) == kp.num_worlds;
+        std::printf("{\"init_check\":true,\"plank_worlds\":%u,\"plank_kappa_worlds\":%u,\"sym_worlds\":%.0f,"
+                    "\"materialised\":%s,\"mat_equal\":%s,\"sym_equal\":%s}\n",
+                    p.init.num_worlds, kp.num_worlds, eng.worlds(S), t.init.num_worlds ? "true" : "false",
+                    mat_ok ? "true" : "false", sym_ok ? "true" : "false");
+        if (!mat_ok || !sym_ok) return 1;
+    }
     EpistemicState s;
     if (run_explicit) { t0 = std::chrono::steady_clock::now(); s = bisim_contract(t.init); texp += secs(t0); }
 
