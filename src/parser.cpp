@@ -5,6 +5,8 @@
 #include "heuristic.hpp"
 #include "json.hpp"
 #include <charconv>
+#include <cstdlib>
+#include <map>
 #include <string_view>
 #include <stdexcept>
 #include <iostream>
@@ -217,77 +219,10 @@ static FormulaPtr unwrap_formula(
 }
 
 /**
- * @brief Load a planning task from a JSON file.
- *
- * The input JSON is expected to follow a structured format including:
- * - Language definition (atoms and agents)
- * - Requirements (used to detect KD45 vs S5 frame constraints)
- * - Initial epistemic state (worlds, valuations, accessibility relations)
- * - Actions with events, preconditions, effects, and observability conditions
- * - Goal formula
- *
- * The kd45 flag is set when the requirements contain ":kd45" or ":belief",
- * indicating that all accessibility relations must be serial (KD45n frame).
- * Product update will enforce seriality on the resulting state when this flag
- * is true, preventing vacuous-truth errors from worlds with empty R_i rows.
- *
- * @param json_path Path to the JSON file.
- * @return Fully constructed PlanningTask instance.
- *
- * @throws std::runtime_error if the file cannot be read or parsing fails.
+ * @brief Read an explicit initial state ("initial-state") into task.init.
  */
-PlanningTask load_task(const std::string& json_path) {
-    const json::Document doc = json::Document::parse_file(json_path);
-    const json::Value    j   = doc.root();
-
-    PlanningTask task;
-
-    // Read requirements to detect KD45 (doxastic/belief) vs S5 (knowledge) frame.
-    // plank exports requirements as a list of strings under "requirements".
-    // KD45 is indicated by ":kd45" or ":belief"; S5 by ":s5" or ":knowledge".
-    // If requirements are absent or neither flag is found, default to S5 (conservative).
-    task.kd45 = false;
-    if (j.contains("planning-task-info")) {
-        const auto pti = j.at("planning-task-info");
-        if (pti.contains("requirements")) {
-            for (const auto req : pti.at("requirements")) {
-                std::string r = req.get<std::string>();
-                if (r == ":kd45" || r == ":KD45-frames" || r == ":belief" || r == ":doxastic") {
-                    task.kd45 = true;
-                    break;
-                }
-            }
-        }
-    }
-
-
-    if (!task.kd45 && j.contains("requirements")) {
-        for (const auto req : j.at("requirements")) {
-            std::string r = req.get<std::string>();
-            if (r == ":kd45" || r == ":KD45-frames" || r == ":belief" || r == ":doxastic") {
-                task.kd45 = true;
-                break;
-            }
-        }
-    }
-
-    std::cerr << "[parser] Frame: " << (task.kd45 ? "KD45 (belief)" : "S5 (knowledge)") << "\n";
-
-    for (const auto a : j.at("language").at("atoms")) {
-        std::string name = a.get<std::string>();
-        task.atom_index[name] = static_cast<AtomIdx>(task.atom_names.size());
-        task.atom_names.push_back(name);
-    }
-
-    for (const auto a : j.at("language").at("agents")) {
-        std::string name = a.get<std::string>();
-        task.agent_index[name] = static_cast<AgentIdx>(task.agent_names.size());
-        task.agent_names.push_back(name);
-    }
-
-    size_t na = task.num_agents();
-
-    const auto is = j.at("initial-state");
+static void parse_explicit_init(const json::Value& is, PlanningTask& task) {
+    const size_t na = task.num_agents();
 
     // Views into the document; it outlives every lookup below.
     std::unordered_map<std::string_view, WorldIdx> world_idx;
@@ -408,6 +343,206 @@ PlanningTask load_task(const std::string& json_path) {
         }
         task.init.invalidate();
     }
+}
+
+namespace {
+
+// Truth of a propositional formula at a valuation.
+bool eval_prop(const Formula& f, const std::vector<std::uint8_t>& val) {
+    switch (f.kind) {
+    case FormulaKind::Top:  return true;
+    case FormulaKind::Bot:  return false;
+    case FormulaKind::Atom: return val[f.atom] != 0;
+    case FormulaKind::Not:  return !eval_prop(*f.children[0], val);
+    case FormulaKind::And:
+        for (const auto& c : f.children) if (!eval_prop(*c, val)) return false;
+        return true;
+    case FormulaKind::Or:
+        for (const auto& c : f.children) if (eval_prop(*c, val)) return true;
+        return false;
+    default:
+        throw std::runtime_error("finitary S5 theory: formula is not propositional");
+    }
+}
+
+// Literals that are conjuncts (at any depth of conjunction) of type-2 formulas:
+// every world has them, so the enumeration fixes them, as plank does.
+void collect_literals(const Formula& f, std::vector<std::int8_t>& forced) {
+    if (f.kind == FormulaKind::Atom) { forced[f.atom] = 1; return; }
+    if (f.kind == FormulaKind::Not && f.children[0]->kind == FormulaKind::Atom) {
+        forced[f.children[0]->atom] = 0; return;
+    }
+    if (f.kind == FormulaKind::And)
+        for (const auto& c : f.children) collect_literals(*c, forced);
+}
+
+} // namespace
+
+/**
+ * @brief Materialise a finitary S5 theory as an explicit state, as plank's
+ * grounder does, but building each relation from the classes of agreement on
+ * the type-3 formulas instead of comparing every pair of worlds.
+ *
+ * @return false (and task.init left empty) if the theory has more than
+ *         2^max_free_atoms candidate valuations.
+ */
+bool materialize_theory(PlanningTask& task, unsigned max_free_atoms) {
+    const InitialTheory& th = *task.theory;
+    const std::size_t np = task.num_atoms(), ng = task.num_agents();
+    std::vector<std::int8_t> forced(np, -1);
+    for (const auto& f : th.worlds) collect_literals(*f, forced);
+    for (auto [p, v] : th.fixed) forced[p] = v ? 1 : 0;
+    std::vector<AtomIdx> free;
+    for (AtomIdx p = 0; p < np; ++p) if (forced[p] < 0) free.push_back(p);
+    if (free.size() > max_free_atoms) { task.init = EpistemicState{}; return false; }
+
+    std::vector<std::uint8_t> val(np, 0);
+    for (AtomIdx p = 0; p < np; ++p) if (forced[p] > 0) val[p] = 1;
+    std::vector<std::vector<std::uint8_t>> worlds;
+    std::vector<WorldIdx> designated;
+    for (std::uint64_t m = 0; m < (std::uint64_t(1) << free.size()); ++m) {
+        for (std::size_t k = 0; k < free.size(); ++k) val[free[k]] = (m >> k) & 1u;
+        bool ok = true;
+        for (const auto& f : th.worlds) if (!eval_prop(*f, val)) { ok = false; break; }
+        if (!ok) continue;
+        bool des = true;
+        for (const auto& f : th.designated) if (!eval_prop(*f, val)) { des = false; break; }
+        if (des) designated.push_back(static_cast<WorldIdx>(worlds.size()));
+        worlds.push_back(val);
+    }
+    if (worlds.empty()) throw std::runtime_error("finitary S5 theory: no world satisfies the theory");
+    if (designated.empty()) throw std::runtime_error("finitary S5 theory: no designated world");
+
+    const auto nw = static_cast<std::uint32_t>(worlds.size());
+    EpistemicState& s = task.init;
+    s = EpistemicState{};
+    s.allocate(nw, static_cast<std::uint32_t>(np), static_cast<std::uint32_t>(ng));
+    for (WorldIdx w = 0; w < nw; ++w)
+        for (AtomIdx p = 0; p < np; ++p) if (worlds[w][p]) s.set_atom(w, p);
+    for (WorldIdx w : designated) s.set_designated(w);
+    for (AgentIdx g = 0; g < ng; ++g) {
+        // R_g is agreement on the type-3 formulas: worlds with equal truth
+        // vectors form one class, and each world's successors are its class.
+        std::map<std::vector<std::uint8_t>, std::vector<WorldIdx>> classes;
+        std::vector<std::vector<std::uint8_t>> key(nw);
+        for (WorldIdx w = 0; w < nw; ++w) {
+            for (const auto& f : th.observes[g]) key[w].push_back(eval_prop(*f, worlds[w]));
+            classes[key[w]].push_back(w);
+        }
+        for (auto& [k, members] : classes) {
+            const std::uint32_t id = s.add_set(members);
+            for (WorldIdx w : members) s.set_of[std::size_t(g) * nw + w] = id;
+        }
+    }
+    s.invalidate();
+    return true;
+}
+
+/**
+ * @brief Read a finitary S5 theory ("initial-theory", written by
+ * `ground --theory`) into task.theory, and materialise it into task.init when
+ * it has at most 2^ALETHEIA_THEORY_MAX_FREE (default 2^24) candidate valuations.
+ */
+static void parse_theory(const json::Value& th, PlanningTask& task) {
+    InitialTheory t;
+    for (const auto f : th.at("type-1")) t.designated.push_back(unwrap_formula(f, task.atom_index, task.agent_index));
+    for (const auto f : th.at("type-2")) t.worlds.push_back(unwrap_formula(f, task.atom_index, task.agent_index));
+    t.observes.resize(task.num_agents());
+    for (auto& [agent, fs] : th.at("type-3").items()) {
+        const auto it = task.agent_index.find(std::string(agent));
+        if (it == task.agent_index.end()) throw std::runtime_error("finitary S5 theory: unknown agent " + std::string(agent));
+        for (const auto f : fs) t.observes[it->second].push_back(unwrap_formula(f, task.atom_index, task.agent_index));
+    }
+    if (th.contains("fixed"))
+        for (auto& [atom, v] : th.at("fixed").items()) {
+            const auto it = task.atom_index.find(std::string(atom));
+            if (it == task.atom_index.end()) throw std::runtime_error("finitary S5 theory: unknown atom " + std::string(atom));
+            t.fixed.push_back({it->second, v.get<bool>()});
+        }
+    task.theory = std::move(t);
+    unsigned max_free = 24;
+    if (const char* e = std::getenv("ALETHEIA_THEORY_MAX_FREE")) max_free = static_cast<unsigned>(std::stoul(e));
+    const bool done = materialize_theory(task, max_free);
+    std::cerr << "[parser] Initial state: finitary S5 theory"
+              << (done ? ", materialised with " + std::to_string(task.init.num_worlds) + " worlds"
+                       : std::string(", not materialised (too many valuations)")) << "\n";
+}
+
+/**
+ * @brief Load a planning task from a JSON file.
+ *
+ * The input JSON is expected to follow a structured format including:
+ * - Language definition (atoms and agents)
+ * - Requirements (used to detect KD45 vs S5 frame constraints)
+ * - Initial epistemic state (worlds, valuations, accessibility relations)
+ * - Actions with events, preconditions, effects, and observability conditions
+ * - Goal formula
+ *
+ * The kd45 flag is set when the requirements contain ":kd45" or ":belief",
+ * indicating that all accessibility relations must be serial (KD45n frame).
+ * Product update will enforce seriality on the resulting state when this flag
+ * is true, preventing vacuous-truth errors from worlds with empty R_i rows.
+ *
+ * @param json_path Path to the JSON file.
+ * @return Fully constructed PlanningTask instance.
+ *
+ * @throws std::runtime_error if the file cannot be read or parsing fails.
+ */
+PlanningTask load_task(const std::string& json_path) {
+    const json::Document doc = json::Document::parse_file(json_path);
+    const json::Value    j   = doc.root();
+
+    PlanningTask task;
+
+    // Read requirements to detect KD45 (doxastic/belief) vs S5 (knowledge) frame.
+    // plank exports requirements as a list of strings under "requirements".
+    // KD45 is indicated by ":kd45" or ":belief"; S5 by ":s5" or ":knowledge".
+    // If requirements are absent or neither flag is found, default to S5 (conservative).
+    task.kd45 = false;
+    if (j.contains("planning-task-info")) {
+        const auto pti = j.at("planning-task-info");
+        if (pti.contains("requirements")) {
+            for (const auto req : pti.at("requirements")) {
+                std::string r = req.get<std::string>();
+                if (r == ":kd45" || r == ":KD45-frames" || r == ":belief" || r == ":doxastic") {
+                    task.kd45 = true;
+                    break;
+                }
+            }
+        }
+    }
+
+
+    if (!task.kd45 && j.contains("requirements")) {
+        for (const auto req : j.at("requirements")) {
+            std::string r = req.get<std::string>();
+            if (r == ":kd45" || r == ":KD45-frames" || r == ":belief" || r == ":doxastic") {
+                task.kd45 = true;
+                break;
+            }
+        }
+    }
+
+    std::cerr << "[parser] Frame: " << (task.kd45 ? "KD45 (belief)" : "S5 (knowledge)") << "\n";
+
+    for (const auto a : j.at("language").at("atoms")) {
+        std::string name = a.get<std::string>();
+        task.atom_index[name] = static_cast<AtomIdx>(task.atom_names.size());
+        task.atom_names.push_back(name);
+    }
+
+    for (const auto a : j.at("language").at("agents")) {
+        std::string name = a.get<std::string>();
+        task.agent_index[name] = static_cast<AgentIdx>(task.agent_names.size());
+        task.agent_names.push_back(name);
+    }
+
+    size_t na = task.num_agents();
+
+    if (j.contains("initial-theory"))
+        parse_theory(j.at("initial-theory"), task);
+    else
+        parse_explicit_init(j.at("initial-state"), task);
 
     for (auto& [action_name, a_j] : j.at("actions").items()) {
         Action act;

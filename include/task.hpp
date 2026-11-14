@@ -3,7 +3,23 @@
 #include "state.hpp"
 #include "action.hpp"
 
+#include <optional>
+
 struct AgentSymmetry;
+
+// An initial state given as a finitary S5 theory, as plank grounds it
+// (finitary_s5_theory_grounder):
+//   worlds      the valuations satisfying every type-2 formula, with the fixed
+//               (fact) atoms at their values;
+//   designated  the worlds satisfying every type-1 formula;
+//   R_i(w, v)   iff w and v agree on every type-3 formula of agent i.
+// All formulas are propositional.
+struct InitialTheory {
+    std::vector<FormulaPtr>                designated;   // type 1
+    std::vector<FormulaPtr>                worlds;       // type 2
+    std::vector<std::vector<FormulaPtr>>   observes;     // type 3, per agent
+    std::vector<std::pair<AtomIdx, bool>>  fixed;        // fact atoms
+};
 
 // Where the searches test for provable dead ends with h^Δ (hdelta.hpp).
 enum class DeadEndCheck : std::uint8_t {
@@ -20,6 +36,11 @@ struct PlanningTask {
 
     // Task components
     EpistemicState            init;
+    // Set when the task gives the initial state as a finitary S5 theory. `init`
+    // is then its explicit materialisation, or empty (0 worlds) when the theory
+    // has more valuations than the parser enumerates; the symbolic engine builds
+    // its initial state from the theory directly.
+    std::optional<InitialTheory> theory;
     std::vector<Action>       actions;
     FormulaPtr                goal;
 
