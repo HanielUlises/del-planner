@@ -108,24 +108,60 @@ product_update + bisim_contract only):
 - **Does:** families whose explicit models are exponential — gossip, muddy
   children, deception. The explicit table grows as n·2^n; the BDDs grow linearly
   (basic) or stay in the low thousands (hard/intermediate, 5–7 hidden bits).
-- **The real unlock needs a symbolic loader.** gos-13 cannot even be exported by
-  plank (> 31 GB): the initial state is 2^n worlds with explicit relations.
-  `Engine::from_explicit` inherits that wall. Finitary-S5 initial states are knowledge
-  structures: θ = ⋀ CK-propositional constraints, Ω_i = θ(x) ∧ θ(y) ∧
-  ⋀_{p : C(Kw_i p)} (x_p ↔ y_p) (linear in n), δ = θ ∧ facts. Validate on small n
-  against plank's JSON with the same κ test.
+- **The initial state was the wall, and the theory loader removes it.**
+  plank's grounder builds a finitary-S5 initial state by enumerating every
+  valuation and comparing every pair of worlds (O(|W|²·|Ag|)); `tools/ground`
+  already writes large explicit states compactly (gos-13-all), but the
+  grounding itself does not scale: generated gossip with 12 agents takes 17.5 s
+  and 0.9 GB, and 14 or 16 agents exceed 16 GB. See "Symbolic initial states".
 - **Validation caveat:** plans for tasks plank cannot ground cannot be counted as
   validated in the competition sense; the theorem + differential evidence is
   what we can state.
 
+## Symbolic initial states (finitary S5 theories)
+
+`ground --theory` grounds everything except the initial state and writes the
+theory plank's `finitary_s5_theory_grounder` builds it from (type-1: designated;
+type-2: worlds, including C(K_i φ); type-3: per-agent agreement formulas; fixed
+fact atoms). The parser reads it into `PlanningTask::theory` and materialises
+`init` by grouping worlds by their type-3 truth vectors (O(|W|) per agent instead
+of plank's pairwise comparison) when there are at most 2^24 candidate valuations
+(`ALETHEIA_THEORY_MAX_FREE`). `Engine::from_theory` builds
+
+  θ = fixed ∧ ⋀ type-2,  δ = θ ∧ ⋀ type-1,
+  Ω_i = θ(x) ∧ θ(y) ∧ ⋀_{φ ∈ type-3(i)} (φ(x) ↔ φ(y)),
+
+which is plank's construction read as a formula (R_i is defined by agreement,
+so it is reflexive and symmetric as in plank).
+
+Validation (`symcheck theory.json plan --plank-init explicit.json`): on all 106
+finitary-S5 tasks of the benchmark set (IεPC and local), κ(plank's s0) ==
+κ(materialisation) == κ(enumerate(S0)); the 47 validated plans among them replay
+correctly from the theory (980 states κ-equal).
+
+Scaling, generated gossip (plan: all tell_i_j, n(n−1) actions; goal checked):
+
+| n | worlds | plank ground | ground --theory | symbolic replay | explicit replay |
+|---|---|---|---|---|---|
+| 10 | 1,024 | 0.5 s | 0.01 s | 0.013 s | 0.008 s |
+| 12 | 4,096 | 17.5 s, 0.9 GB | 0.02 s | 0.025 s | 0.052 s |
+| 14 | 16,384 | > 16 GB | 0.02 s | 0.043 s | 0.34 s |
+| 16 | 65,536 | > 16 GB | 0.02 s | 0.09 s | 2.3 s |
+| 20 | 10^6 | — | 0.04 s | 0.18 s | 67 s, 1.3 GB |
+| 32 | 4.3·10^9 | — | 0.16 s | 0.96 s | — |
+| 64 | 1.8·10^19 | — | 0.95 s | 16.9 s, 0.44 GB | — |
+
+Up to n = 20 both engines agree on |W| and |W_d| at every step and on the
+goal; plank's validator accepts the plan for n = 10 and gives no verdict for
+n = 12 within 900 s (it grounds, then validates on the explicit model), so
+beyond n = 10 the theorem and the differential test are the evidence.
+
 ## Next steps (in order)
 
-1. Symbolic loader for finitary-S5 initial states (EPDDL problem → BDDs),
-   κ-validated against plank JSON for small n; then gos-13+.
-2. Contraction speed: skip the E fixpoint when the update provably preserves
+1. Contraction speed: skip the E fixpoint when the update provably preserves
    valuation-injectivity; complement edges; better cache; GC (needed for search).
-3. Search integration: hybrid nodes (explicit below a world threshold, symbolic
+2. Search integration: hybrid nodes (explicit below a world threshold, symbolic
    above; conversions exist in both directions), duplicate detection as above,
    symmetry Γ_s by variable renaming + node equality when H = ∅.
-4. Heuristics: kadd's "holds at some designated world" is ∃-quantification;
+3. Heuristics: kadd's "holds at some designated world" is ∃-quantification;
    h^Δ's possibility pairs need a symbolic formulation.
