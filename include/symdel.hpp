@@ -51,6 +51,10 @@ public:
 
     // Construction and the two operations
     SymState from_explicit(const EpistemicState& e);
+    // The initial state of a finitary S5 theory, without enumerating worlds:
+    // theta = fixed atoms ∧ ⋀ type-2, delta = theta ∧ ⋀ type-1,
+    // Omega_i = theta(x) ∧ theta(y) ∧ ⋀_{φ ∈ type-3(i)} (φ(x) <-> φ(y)).
+    SymState from_theory(const InitialTheory& th);
     SymState update(SymState& s, const Action& a);
     SymState contract(const SymState& s);
 
@@ -75,6 +79,7 @@ private:
         { return htop_ ? 3 * k + c : 3 * na_ + 3 * k + c; }
 
     Ref box(SymState& s, std::uint32_t ag, Ref ext);
+    Ref prop(const Formula& f, unsigned c);   // propositional formula over copy c
     Ref vars(const std::vector<std::uint32_t>& hid, unsigned c, bool atoms = true);
     Ref code(const std::vector<std::uint32_t>& slots, std::uint32_t value, unsigned c);
     std::vector<std::uint32_t> copy_map(std::initializer_list<std::pair<unsigned, unsigned>> m) const;

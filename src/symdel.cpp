@@ -162,6 +162,48 @@ SymState Engine::from_explicit(const EpistemicState& e) {
     return s;
 }
 
+Ref Engine::prop(const Formula& f, unsigned c) {
+    switch (f.kind) {
+    case FormulaKind::Top:  return kTrue;
+    case FormulaKind::Bot:  return kFalse;
+    case FormulaKind::Atom: return m_.var(av(f.atom, c));
+    case FormulaKind::Not:  return m_.neg(prop(*f.children[0], c));
+    case FormulaKind::And: {
+        Ref r = kTrue;
+        for (auto& ch : f.children) r = m_.band(r, prop(*ch, c));
+        return r;
+    }
+    case FormulaKind::Or: {
+        Ref r = kFalse;
+        for (auto& ch : f.children) r = m_.bor(r, prop(*ch, c));
+        return r;
+    }
+    default:
+        throw std::runtime_error("finitary S5 theory: formula is not propositional");
+    }
+}
+
+SymState Engine::from_theory(const InitialTheory& th) {
+    SymState s;
+    Ref theta = kTrue;
+    for (auto [p, v] : th.fixed) theta = m_.band(theta, v ? m_.var(av(p, 0)) : m_.nvar(av(p, 0)));
+    for (const auto& f : th.worlds) theta = m_.band(theta, prop(*f, 0));
+    Ref delta = theta;
+    for (const auto& f : th.designated) delta = m_.band(delta, prop(*f, 0));
+    if (theta == kFalse) throw std::runtime_error("finitary S5 theory: no world satisfies the theory");
+    if (delta == kFalse) throw std::runtime_error("finitary S5 theory: no designated world");
+    s.theta = theta;
+    s.delta = delta;
+    const Ref tt = m_.band(theta, m_.permute(theta, XY_, true));
+    for (AgentIdx g = 0; g < ng_; ++g) {
+        Ref agree = tt;
+        if (g < th.observes.size())
+            for (const auto& f : th.observes[g]) agree = m_.band(agree, m_.biff(prop(*f, 0), prop(*f, 1)));
+        s.om.push_back(agree);
+    }
+    return s;
+}
+
 // ---------------------------------------------------------------- product update
 
 SymState Engine::update(SymState& s, const Action& a) {
