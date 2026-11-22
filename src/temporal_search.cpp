@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <fstream>
 #include <limits>
 #include <queue>
@@ -399,6 +400,382 @@ bool validate_linear(const PlanningTask& task, const Durations& durations,
     if (!end_until(std::numeric_limits<double>::infinity())) return false;
     if (!model.satisfies(*task.goal)) return fail("the goal does not hold at the end");
     if (ticks(makespan) != ticks(plan.makespan)) return fail("the makespan is wrong");
+    return true;
+}
+
+
+// ── Branching ───────────────────────────────────────────────────────────────
+
+namespace {
+
+using Observed = std::vector<std::pair<ActionIdx, EventIdx>>;
+
+// For each subset of `running` ended, every state the model can be in: one
+// per combination of the ended actions' outcomes. nullopt where some ended
+// action has no outcome at all.
+std::optional<std::vector<std::vector<EpistemicState>>>
+branch_intermediates(const PlanningTask& task, const EpistemicState& s,
+                     const std::vector<ActionIdx>& running)
+{
+    const std::size_t n = running.size();
+    std::vector<std::vector<EpistemicState>> at(std::size_t{1} << n);
+    at[0] = {s};
+    for (std::size_t mask = 1; mask < at.size(); ++mask) {
+        std::size_t high = 0;
+        for (std::size_t i = 0; i < n; ++i)
+            if (mask & (std::size_t{1} << i)) high = i;
+        for (const auto& base : at[mask & ~(std::size_t{1} << high)]) {
+            auto outs = outcomes(task, base, task.actions[running[high]], cap_of(task));
+            if (outs.empty()) return std::nullopt;
+            for (auto& [e, st] : outs) at[mask].push_back(std::move(st));
+        }
+    }
+    return at;
+}
+
+bool coherent_branching(const PlanningTask& task, const EpistemicState& s,
+                        const std::vector<ActionIdx>& running)
+{
+    const auto at = branch_intermediates(task, s, running);
+    if (!at) return false;
+    const std::size_t n = running.size();
+    for (std::size_t mask = 0; mask < at->size(); ++mask) {
+        for (const auto& st : (*at)[mask]) {
+            for (std::size_t i = 0; i < n; ++i) {
+                if (mask & (std::size_t{1} << i)) continue;
+                if (outcomes(task, st, task.actions[running[i]], cap_of(task)).empty())
+                    return false;
+                for (std::size_t j = i + 1; j < n; ++j) {
+                    if (mask & (std::size_t{1} << j)) continue;
+                    if (!commutes(task, st, running[i], running[j], cap_of(task)).commute())
+                        return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool may_start_branching(const PlanningTask& task,
+                         const std::vector<std::vector<EpistemicState>>& at,
+                         const std::vector<ActionIdx>& running, ActionIdx b, SearchStats& stats)
+{
+    ++stats.start_checks;
+    const std::size_t n = running.size();
+    for (std::size_t mask = 0; mask < at.size(); ++mask) {
+        for (const auto& st : at[mask]) {
+            if (outcomes(task, st, task.actions[b], cap_of(task)).empty()) return false;
+            for (std::size_t i = 0; i < n; ++i) {
+                if (mask & (std::size_t{1} << i)) continue;
+                ++stats.commutation_checks;
+                if (!commutes(task, st, b, running[i], cap_of(task)).commute()) return false;
+            }
+        }
+    }
+    return true;
+}
+
+struct BNode {
+    EpistemicState       model;
+    std::vector<Running> running;     // by action index
+    double               t{0.0};
+};
+
+Key key_of(const BNode& n)
+{
+    Key k{n.model.fingerprint(), {}};
+    for (const auto& r : n.running) k.remaining.emplace_back(r.action, ticks(r.end - n.t));
+    return k;
+}
+
+BNode started(const BNode& n, ActionIdx b, double duration)
+{
+    BNode next{n.model, n.running, n.t};
+    next.running.push_back({b, n.t + duration});
+    std::sort(next.running.begin(), next.running.end(),
+              [](const Running& x, const Running& y) { return x.action < y.action; });
+    return next;
+}
+
+// Advance to the earliest end: one child per combination of the observed
+// outcomes of the actions ending then. nullopt if an end has no outcome.
+std::optional<std::vector<std::pair<Observed, BNode>>> advanced(const PlanningTask& task,
+                                                                 const BNode& n)
+{
+    double t_next = std::numeric_limits<double>::infinity();
+    for (const auto& r : n.running) t_next = std::min(t_next, r.end);
+
+    std::vector<Running> rest;
+    std::vector<ActionIdx> ending;
+    for (const auto& r : n.running) {
+        if (ticks(r.end) == ticks(t_next)) ending.push_back(r.action);
+        else rest.push_back(r);
+    }
+
+    std::vector<std::pair<Observed, EpistemicState>> states{{{}, n.model}};
+    for (const ActionIdx a : ending) {
+        std::vector<std::pair<Observed, EpistemicState>> next;
+        for (auto& [obs, st] : states) {
+            auto outs = outcomes(task, st, task.actions[a], cap_of(task));
+            if (outs.empty()) return std::nullopt;
+            for (auto& [e, after] : outs) {
+                Observed o = obs;
+                if (outs.size() > 1) o.emplace_back(a, e);
+                next.emplace_back(std::move(o), std::move(after));
+            }
+        }
+        states = std::move(next);
+    }
+
+    std::vector<std::pair<Observed, BNode>> out;
+    out.reserve(states.size());
+    for (auto& [obs, st] : states) out.emplace_back(std::move(obs), BNode{std::move(st), rest, t_next});
+    return out;
+}
+
+struct OutOfTime {};
+
+class PolicySearch {
+public:
+    PolicySearch(const PlanningTask& task, const Durations& d, const SearchOptions& o,
+                 SearchStats& stats)
+    : task_(task), d_(d), o_(o), stats_(stats)
+    {
+        for (const double x : d_.of) min_duration_ = std::min(min_duration_, x);
+    }
+
+    struct Result {
+        bool   solved;
+        double value;     // the exact least cost if solved, else a lower bound above the bound
+    };
+
+    Result solve(const BNode& n, double bound)
+    {
+        if (std::chrono::steady_clock::now() >= o_.deadline) throw OutOfTime{};
+        if (o_.max_expansions && stats_.expanded >= o_.max_expansions) throw OutOfTime{};
+
+        const Key key = key_of(n);
+        if (const auto it = memo_.find(key); it != memo_.end()) {
+            const Memo& m = it->second;
+            if (m.solved) return {m.cost <= bound + kEps, m.cost};
+            if (m.lower > bound + kEps) return {false, m.lower};
+        }
+
+        if (n.running.empty() && n.model.satisfies(*task_.goal)) {
+            memo_[key] = Memo{true, 0.0, 0.0, kGoal};
+            return {true, 0.0};
+        }
+
+        const double h = estimate(n);
+        if (h > bound + kEps) return {false, h};
+        ++stats_.expanded;
+
+        double best = kInf;
+        int    move = kNone;
+        double lower = kInf;
+
+        // start b: no time passes.
+        if (n.running.size() < o_.max_concurrency) {
+            const auto run = actions_of(n.running);
+            if (const auto at = branch_intermediates(task_, n.model, run)) {
+                for (ActionIdx b = 0; b < task_.actions.size(); ++b) {
+                    if (std::find(run.begin(), run.end(), b) != run.end()) continue;
+                    if (!task_.actions[b].applicable(n.model)) continue;
+                    if (!may_start_branching(task_, *at, run, b, stats_)) {
+                        ++stats_.start_rejected;
+                        continue;
+                    }
+                    ++stats_.generated;
+                    const Result r = solve(started(n, b, d_[b]), std::min(bound, best));
+                    if (r.solved && r.value < best - kEps) {
+                        best = r.value;
+                        move = static_cast<int>(b);
+                    } else if (!r.solved) {
+                        lower = std::min(lower, r.value);
+                    }
+                }
+            }
+        }
+
+        // advance: an AND over what the ending actions observe.
+        if (!n.running.empty()) {
+            if (const auto children = advanced(task_, n)) {
+                const double dt = children->front().second.t - n.t;
+                const double budget = std::min(bound, best) - dt;
+                double worst = 0.0;
+                bool   all   = true;
+                for (const auto& [obs, child] : *children) {
+                    ++stats_.generated;
+                    const Result r = solve(child, budget);
+                    if (!r.solved) {
+                        all = false;
+                        lower = std::min(lower, dt + r.value);
+                        break;
+                    }
+                    worst = std::max(worst, r.value);
+                }
+                if (all && dt + worst < best - kEps) {
+                    best = dt + worst;
+                    move = kAdvance;
+                }
+            }
+        }
+
+        if (best <= bound + kEps) {
+            memo_[key] = Memo{true, best, best, move};
+            return {true, best};
+        }
+        Memo& m = memo_[key];
+        m.solved = false;
+        m.lower  = std::max(m.lower, lower);
+        return {false, lower};
+    }
+
+    std::shared_ptr<const Epoch> build(BNode n, std::size_t& leaves) const
+    {
+        auto epoch = std::make_shared<Epoch>();
+        epoch->t = n.t;
+        while (true) {
+            const Memo& m = memo_.at(key_of(n));
+            if (m.move == kGoal) {
+                epoch->advance_to = n.t;
+                ++leaves;
+                return epoch;
+            }
+            if (m.move >= 0) {
+                const auto b = static_cast<ActionIdx>(m.move);
+                epoch->starts.push_back(Step{b, n.t, d_[b]});
+                n = started(n, b, d_[b]);
+                continue;
+            }
+            const auto children = advanced(task_, n);
+            epoch->advance_to = children->front().second.t;
+            for (const auto& [obs, child] : *children)
+                epoch->branches.push_back(Branch{obs, build(child, leaves)});
+            std::sort(epoch->starts.begin(), epoch->starts.end(),
+                      [](const Step& x, const Step& y) { return x.action < y.action; });
+            return epoch;
+        }
+    }
+
+    double estimate(const BNode& n) const
+    {
+        if (!n.running.empty()) {
+            double latest = n.t;
+            for (const auto& r : n.running) latest = std::max(latest, r.end);
+            return latest - n.t;
+        }
+        return n.model.satisfies(*task_.goal) ? 0.0 : min_duration_;
+    }
+
+private:
+    static constexpr double kEps  = 1e-9;
+    static constexpr double kInf  = std::numeric_limits<double>::infinity();
+    static constexpr int    kNone = -3, kGoal = -2, kAdvance = -1;
+
+    struct Memo {
+        bool   solved{false};
+        double cost{kInf};
+        double lower{0.0};
+        int    move{kNone};
+    };
+
+    const PlanningTask&  task_;
+    const Durations&     d_;
+    const SearchOptions& o_;
+    SearchStats&         stats_;
+    double               min_duration_{kInf};
+    std::unordered_map<Key, Memo, KeyHash> memo_;
+};
+
+} // namespace
+
+std::optional<TemporalPolicy>
+search_policy(const PlanningTask& task, const Durations& durations, const SearchOptions& options,
+              SearchStats* stats_out)
+{
+    SearchStats stats;
+    const auto started_at = std::chrono::steady_clock::now();
+    PolicySearch search(task, durations, options, stats);
+
+    BNode root{bisim_contract(task.init), {}, 0.0};
+    std::optional<TemporalPolicy> policy;
+    try {
+        double bound = search.estimate(root);
+        while (true) {
+            const auto r = search.solve(root, bound);
+            if (r.solved) {
+                TemporalPolicy p;
+                p.makespan = r.value;
+                p.root     = search.build(root, p.leaves);
+                policy     = std::move(p);
+                break;
+            }
+            if (!std::isfinite(r.value)) {
+                stats.exhausted = true;
+                break;
+            }
+            bound = r.value;
+        }
+    } catch (const OutOfTime&) {
+    }
+
+    stats.elapsed_sec =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - started_at).count();
+    if (stats_out) *stats_out = stats;
+    return policy;
+}
+
+bool validate_policy(const PlanningTask& task, const Durations& durations,
+                     const TemporalPolicy& policy, std::string* why)
+{
+    const auto fail = [&](const std::string& message) {
+        if (why) *why = message;
+        return false;
+    };
+    if (!policy.root) return fail("the policy is empty");
+
+    double worst = 0.0;
+    const std::function<bool(const Epoch&, BNode)> check = [&](const Epoch& e, BNode n) -> bool {
+        if (ticks(e.t) != ticks(n.t)) return fail("an epoch is at the wrong time");
+        for (const auto& step : e.starts) {
+            const std::string& name = task.actions[step.action].name;
+            if (ticks(step.start) != ticks(n.t)) return fail(name + " starts off its epoch");
+            if (std::abs(step.duration - durations[step.action]) > 1e-9)
+                return fail(name + " has the wrong duration");
+            if (!task.actions[step.action].applicable(n.model))
+                return fail(name + " is not applicable at its start");
+            n = started(n, step.action, step.duration);
+            if (!coherent_branching(task, n.model, actions_of(n.running)))
+                return fail("starting " + name + " makes the running set incoherent");
+        }
+        if (e.branches.empty()) {
+            if (!n.running.empty()) return fail("a leaf has actions still running");
+            if (!n.model.satisfies(*task.goal)) return fail("the goal does not hold at a leaf");
+            worst = std::max(worst, n.t);
+            return true;
+        }
+        if (n.running.empty()) return fail("an advance with nothing running");
+        const auto children = advanced(task, n);
+        if (!children) return fail("an action ending has no outcome");
+        if (ticks(children->front().second.t) != ticks(e.advance_to))
+            return fail("an advance goes to the wrong time");
+        if (children->size() != e.branches.size())
+            return fail("an advance has " + std::to_string(children->size()) +
+                        " possible outcome combinations but " +
+                        std::to_string(e.branches.size()) + " branches");
+        for (const auto& [obs, child] : *children) {
+            const auto it = std::find_if(e.branches.begin(), e.branches.end(),
+                                         [&](const Branch& b) { return b.observed == obs; });
+            if (it == e.branches.end() || !it->next)
+                return fail("an outcome combination has no branch");
+            if (!check(*it->next, child)) return false;
+        }
+        return true;
+    };
+
+    if (!check(*policy.root, BNode{bisim_contract(task.init), {}, 0.0})) return false;
+    if (ticks(worst) != ticks(policy.makespan)) return fail("the worst-case makespan is wrong");
     return true;
 }
 

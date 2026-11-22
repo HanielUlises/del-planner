@@ -7,6 +7,8 @@
 #include "check.hpp"
 
 #include <cmath>
+#include <functional>
+#include <limits>
 #include <string>
 
 namespace {
@@ -168,6 +170,123 @@ TEST(the_validator_accepts_what_the_search_returns_at_every_concurrency)
         CHECK(plan->makespan <= previous + 1e-9);
         previous = plan->makespan;
     }
+}
+
+// ── Branching ───────────────────────────────────────────────────────────────
+
+std::size_t count_starts(const temporal::Epoch& e)
+{
+    std::size_t n = e.starts.size();
+    for (const auto& b : e.branches) n += count_starts(*b.next);
+    return n;
+}
+
+void print(const PlanningTask& task, const temporal::Epoch& e, int depth = 2)
+{
+    const std::string pad(depth * 2, ' ');
+    for (const auto& s : e.starts)
+        std::cout << pad << s.start << " start " << task.actions[s.action].name << "\n";
+    for (const auto& b : e.branches) {
+        std::cout << pad << e.advance_to << " observed";
+        for (const auto& [a, ev] : b.observed)
+            std::cout << " " << task.actions[a].name << ":" << task.actions[a].events[ev].name;
+        std::cout << "\n";
+        print(task, *b.next, depth + 1);
+    }
+}
+
+TEST(both_robots_look_rather_than_one_telling_the_other)
+{
+    // The corridor's state is open. Untimed, the shortest policy is three
+    // steps: r1 drives, looks, and announces. Timed, sending both robots to
+    // look at once is shorter: 30 + 5 = 35 s against 30 + 5 + 1 = 36 s.
+    const auto task = load_task(fixture("robot-fleet.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet.json"));
+
+    temporal::SearchStats stats;
+    const auto policy = temporal::search_policy(task, d, {}, &stats);
+    CHECK(policy.has_value());
+    if (!policy) return;
+    CHECK_MSG(std::abs(policy->makespan - 35.0) < 1e-9, std::to_string(policy->makespan));
+    CHECK(policy->leaves == 2);
+    std::string why;
+    CHECK_MSG(temporal::validate_policy(task, d, *policy, &why), why);
+    std::cout << "    expanded " << stats.expanded << ", " << stats.elapsed_sec << " s, makespan "
+              << policy->makespan << "\n";
+    print(task, *policy->root);
+}
+
+TEST(one_at_a_time_the_corridor_takes_the_announcement)
+{
+    const auto task = load_task(fixture("robot-fleet.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet.json"));
+    temporal::SearchOptions sequential;
+    sequential.max_concurrency = 1;
+    const auto policy = temporal::search_policy(task, d, sequential);
+    CHECK(policy.has_value());
+    if (!policy) return;
+    CHECK_MSG(std::abs(policy->makespan - 36.0) < 1e-9, std::to_string(policy->makespan));
+    std::string why;
+    CHECK_MSG(temporal::validate_policy(task, d, *policy, &why), why);
+}
+
+TEST(the_depot_branches_four_ways_and_overlaps_both_halves)
+{
+    // Both corridors open: one robot per corridor drives and looks at the
+    // same time, and four outcome combinations each end with two
+    // announcements made together. 36 s in every branch.
+    const auto task = load_task(fixture("robot-fleet-depot.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet-depot.json"));
+
+    temporal::SearchStats stats;
+    const auto policy = temporal::search_policy(task, d, {}, &stats);
+    CHECK(policy.has_value());
+    if (!policy) return;
+    CHECK_MSG(std::abs(policy->makespan - 36.0) < 1e-9, std::to_string(policy->makespan));
+    CHECK(policy->leaves == 4);
+    std::string why;
+    CHECK_MSG(temporal::validate_policy(task, d, *policy, &why), why);
+    std::cout << "    expanded " << stats.expanded << ", start checks " << stats.start_checks
+              << " (" << stats.start_rejected << " rejected), " << stats.elapsed_sec
+              << " s, makespan " << policy->makespan << ", " << count_starts(*policy->root)
+              << " starts\n";
+}
+
+TEST(a_linear_task_gets_the_same_makespan_as_the_linear_search)
+{
+    const auto task = load_task(fixture("robot-fleet-depot-known.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet-depot.json"));
+    const auto plan   = temporal::search_linear(task, d);
+    const auto policy = temporal::search_policy(task, d);
+    CHECK(plan.has_value() && policy.has_value());
+    if (plan && policy) {
+        CHECK(std::abs(plan->makespan - policy->makespan) < 1e-9);
+        CHECK(policy->leaves == 1);
+    }
+}
+
+TEST(the_policy_validator_rejects_a_missing_branch)
+{
+    const auto task = load_task(fixture("robot-fleet.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet.json"));
+    auto policy = temporal::search_policy(task, d);
+    CHECK(policy.has_value());
+    if (!policy) return;
+
+    // Drop one outcome's continuation wherever the policy first branches.
+    std::function<bool(temporal::Epoch&)> prune = [&](temporal::Epoch& e) {
+        if (e.branches.size() > 1) {
+            e.branches.pop_back();
+            return true;
+        }
+        for (auto& b : e.branches)
+            if (prune(const_cast<temporal::Epoch&>(*b.next))) return true;
+        return false;
+    };
+    CHECK(prune(const_cast<temporal::Epoch&>(*policy->root)));
+    std::string why;
+    CHECK(!temporal::validate_policy(task, d, *policy, &why));
+    CHECK_MSG(why.find("branch") != std::string::npos, why);
 }
 
 } // namespace

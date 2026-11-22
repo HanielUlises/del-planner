@@ -31,6 +31,7 @@
 #include "types.hpp"
 
 #include <chrono>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -112,5 +113,53 @@ search_linear(const PlanningTask& task, const Durations& durations,
 // exposed for tests.
 [[nodiscard]] bool coherent(const PlanningTask& task, const EpistemicState& s,
                             const std::vector<ActionIdx>& running);
+
+// ── Branching: temporal policies ────────────────────────────────────────────
+//
+// With sensing, what an action observed is known when it ends, and the policy
+// branches there. A policy is a tree of decision epochs: at each, some
+// actions start; then time advances to the next end, and the continuation is
+// chosen by what the actions ending then observed.
+
+struct Epoch;
+
+// One continuation, selected by the outcomes observed at an advance: one
+// (action, event) per action that ended then with more than one possible
+// outcome. Actions with a single outcome are not listed.
+struct Branch {
+    std::vector<std::pair<ActionIdx, EventIdx>> observed;
+    std::shared_ptr<const Epoch>                next;
+};
+
+struct Epoch {
+    double            t{0.0};
+    std::vector<Step> starts;     // started at t, by action index
+    // After the starts, time advances to `advance_to` and one of `branches`
+    // follows. No branches: nothing is running and the goal holds.
+    double              advance_to{0.0};
+    std::vector<Branch> branches;
+};
+
+struct TemporalPolicy {
+    std::shared_ptr<const Epoch> root;
+    double makespan{0.0};          // worst case over branches
+    std::size_t leaves{0};
+};
+
+// The policy with the least worst-case makespan, among policies that start
+// actions at decision epochs and overlap only coherent running sets.
+// Iterative deepening on a time bound over the AND-OR graph, with results
+// memoised by (model fingerprint, running actions with remaining times),
+// which determines the time still needed whatever the absolute time is.
+[[nodiscard]] std::optional<TemporalPolicy>
+search_policy(const PlanningTask& task, const Durations& durations,
+              const SearchOptions& options = {}, SearchStats* stats = nullptr);
+
+// Replay every branch of a policy: every start applicable and coherent with
+// what runs, every outcome combination an advance can produce covered by a
+// branch, the goal holding with nothing running at every leaf, and the
+// worst-case makespan as stated.
+[[nodiscard]] bool validate_policy(const PlanningTask& task, const Durations& durations,
+                                   const TemporalPolicy& policy, std::string* why = nullptr);
 
 } // namespace temporal
