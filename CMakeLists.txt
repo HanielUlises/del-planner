@@ -34,6 +34,7 @@ set(CORE_SOURCES
     src/symmetry.cpp
     src/parallel.cpp
     src/validator.cpp
+    src/temporal.cpp
 )
 
 add_executable(epistemic_planner src/main.cpp ${CORE_SOURCES})
@@ -105,4 +106,21 @@ if(ALETHEIA_LIBRARY)
     ${CMAKE_CURRENT_BINARY_DIR}/aletheiaConfigVersion.cmake
     DESTINATION ${config_dir})
   install(FILES package.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/aletheia)
+endif()
+
+# Unit tests. Self-contained (no test framework), run with ctest.
+option(ALETHEIA_TESTS "Build the unit tests" OFF)
+if(ALETHEIA_TESTS)
+  enable_testing()
+  add_executable(temporal_commutation_test tests/temporal/commutation_test.cpp ${CORE_SOURCES})
+  target_include_directories(temporal_commutation_test PRIVATE include)
+  target_link_libraries(temporal_commutation_test PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
+  target_compile_definitions(temporal_commutation_test PRIVATE
+    TEMPORAL_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/temporal")
+  add_test(NAME temporal_commutation COMMAND temporal_commutation_test)
+
+  # Not a test: tabulates commutation verdicts over a task's reachable states.
+  add_executable(commutation_scan tools/commutation_scan.cpp ${CORE_SOURCES})
+  target_include_directories(commutation_scan PRIVATE include)
+  target_link_libraries(commutation_scan PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
 endif()
