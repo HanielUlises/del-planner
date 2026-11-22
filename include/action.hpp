@@ -73,11 +73,13 @@ struct Action {
     //     actual worlds would silently drop the non-firing worlds from the
     //     designated set, producing a state that conflates partial execution
     //     with full execution and gives spurious goal satisfaction.
-    //   - For sensing actions: at least one designated world satisfies the
-    //     precondition of at least one designated event (existential). Sensing
-    //     actions branch via product_update_split, so worlds where one event
-    //     fires and worlds where the other fires land in separate subtrees —
-    //     no conflation occurs.
+    //   - For sensing actions: every designated world satisfies the
+    //     precondition of at least one designated event, so whichever world is
+    //     actual, some outcome can occur. Sensing actions branch via
+    //     product_update_split, so worlds where one event fires and worlds
+    //     where another fires land in separate subtrees. (An existential check
+    //     would drop the designated worlds where no event fires, conflating
+    //     "cannot run here" with "ran and observed".)
     bool applicable(const EpistemicState& s) const;
 
     // Weak applicability: existential check used only for AO* action ranking
