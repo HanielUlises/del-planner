@@ -35,6 +35,7 @@ set(CORE_SOURCES
     src/parallel.cpp
     src/validator.cpp
     src/temporal.cpp
+    src/temporal_search.cpp
 )
 
 add_executable(epistemic_planner src/main.cpp ${CORE_SOURCES})
@@ -118,6 +119,13 @@ if(ALETHEIA_TESTS)
   target_compile_definitions(temporal_commutation_test PRIVATE
     TEMPORAL_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/temporal")
   add_test(NAME temporal_commutation COMMAND temporal_commutation_test)
+
+  add_executable(temporal_search_test tests/temporal/temporal_search_test.cpp ${CORE_SOURCES})
+  target_include_directories(temporal_search_test PRIVATE include)
+  target_link_libraries(temporal_search_test PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
+  target_compile_definitions(temporal_search_test PRIVATE
+    TEMPORAL_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/temporal")
+  add_test(NAME temporal_search COMMAND temporal_search_test)
 
   # Not a test: tabulates commutation verdicts over a task's reachable states.
   add_executable(commutation_scan tools/commutation_scan.cpp ${CORE_SOURCES})

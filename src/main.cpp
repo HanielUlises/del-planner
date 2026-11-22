@@ -11,6 +11,9 @@
 #include "signature.hpp"
 #include "strategy.hpp"
 #include "symmetry.hpp"
+#include "temporal_search.hpp"
+
+#include <nlohmann/json.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -95,6 +98,12 @@ static void usage(const char* prog) {
         << "  --dead-ends M  h^Δ dead-end detection: off, root, suspect (default), all\n"
         << "  --signature    Print the task's structural signature as JSON and exit\n"
         << "  --threads      Worker threads (default: all cores; 1 = serial)\n"
+        << "  --temporal     Plan with durations, minimising makespan, overlapping\n"
+        << "                 actions only where their updates commute (linear plans)\n"
+        << "  --durations F  Durations JSON for --temporal: name -> seconds, or an\n"
+        << "                 eplansys action mapping (default: 1 s each)\n"
+        << "  --max-concurrency N\n"
+        << "                 Actions running at once under --temporal (default: 3)\n"
         << "  --help         Show this message\n";
 }
 
@@ -121,6 +130,9 @@ int main(int argc, char* argv[]) {
     bool helpful_on   = true;
     bool signature    = false;
     std::string dead_ends = "suspect";
+    bool temporal_mode    = false;
+    std::string durations_path;
+    size_t max_concurrency = 3;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -145,6 +157,9 @@ int main(int argc, char* argv[]) {
         else if (arg == "--signature")    signature         = true;
         else if (arg == "--dead-ends" && i+1 < argc) dead_ends  = argv[++i];
         else if (arg == "--threads"   && i+1 < argc) par::set_threads(std::stoul(argv[++i]));
+        else if (arg == "--temporal")     temporal_mode     = true;
+        else if (arg == "--durations" && i+1 < argc) durations_path = argv[++i];
+        else if (arg == "--max-concurrency" && i+1 < argc) max_concurrency = std::stoul(argv[++i]);
         else if (arg == "--help" || arg == "-h") { usage(argv[0]); return 0; }
         else {
             std::cerr << "Unknown argument: " << arg << "\n";
@@ -186,6 +201,43 @@ int main(int argc, char* argv[]) {
     task.kd45_repair        = kd45_repair;
     task.consistent_beliefs = consistent;
     task.helpful_actions    = helpful_on;
+
+    if (temporal_mode) {
+        temporal::Durations durations = temporal::Durations::uniform(task);
+        try {
+            if (!durations_path.empty()) durations = temporal::load_durations(task, durations_path);
+        } catch (const std::exception& e) {
+            std::cerr << "Error loading durations: " << e.what() << "\n";
+            return 1;
+        }
+        temporal::SearchOptions options;
+        options.max_concurrency = max_concurrency;
+        options.max_expansions  = limit;
+        if (timeout_secs > 0) options.deadline = t_process + std::chrono::seconds(timeout_secs);
+
+        temporal::SearchStats stats;
+        const auto plan = temporal::search_linear(task, durations, options, &stats);
+        std::cerr << "[temporal] expanded " << stats.expanded << ", generated " << stats.generated
+                  << ", start checks " << stats.start_checks << " (" << stats.start_rejected
+                  << " rejected), " << stats.elapsed_sec << " s\n";
+        if (!plan) {
+            std::cerr << (stats.exhausted ? "[temporal] no plan exists\n"
+                                          : "[temporal] no plan found within the limits\n");
+            return 1;
+        }
+        nlohmann::json out;
+        out["temporal"] = true;
+        out["makespan"] = plan->makespan;
+        out["steps"]    = nlohmann::json::array();
+        for (const auto& step : plan->steps)
+            out["steps"].push_back({{"action", task.actions[step.action].name},
+                                    {"start", step.start},
+                                    {"duration", step.duration}});
+        std::ofstream(plan_path) << out.dump(2) << "\n";
+        std::cerr << "[temporal] " << plan->steps.size() << " actions, makespan "
+                  << plan->makespan << "\n";
+        return 0;
+    }
     const TaskFeatures features = TaskFeatures::extract(task);
 
     if (symmetry) {
