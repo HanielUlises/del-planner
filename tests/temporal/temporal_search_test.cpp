@@ -2,6 +2,7 @@
 
 #include "bisimulation.hpp"
 #include "parser.hpp"
+#include "temporal_execute.hpp"
 #include "temporal_search.hpp"
 
 #include "check.hpp"
@@ -9,6 +10,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <random>
 #include <string>
 
 namespace {
@@ -287,6 +289,105 @@ TEST(the_policy_validator_rejects_a_missing_branch)
     std::string why;
     CHECK(!temporal::validate_policy(task, d, *policy, &why));
     CHECK_MSG(why.find("branch") != std::string::npos, why);
+}
+
+// ── Estimates, baselines and execution ──────────────────────────────────────
+
+std::size_t failures(const PlanningTask& task, const temporal::TemporalPolicy& policy,
+                     temporal::Dispatch dispatch, std::size_t runs, unsigned seed)
+{
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<double> noise(0.5, 1.5);
+    std::vector<WorldIdx> worlds;
+    for (WorldIdx w = 0; w < task.init.num_worlds; ++w)
+        if (task.init.is_designated(w)) worlds.push_back(w);
+    std::size_t failed = 0;
+    for (std::size_t r = 0; r < runs; ++r) {
+        std::vector<double> f;
+        const auto actual = [&](std::size_t i, double d) {
+            while (f.size() <= i) f.push_back(noise(rng));
+            return d * f[i];
+        };
+        const auto e = temporal::execute_policy(task, policy, actual,
+                                                worlds[r % worlds.size()], dispatch);
+        if (!e.ok) ++failed;
+    }
+    return failed;
+}
+
+TEST(the_relay_corridor_overlaps_the_drive_with_the_look)
+{
+    // The running example of the paper: r1 at the junction, reports over a
+    // 60 s relay. r2 drives while r1 looks, then looks itself: 35 s, where
+    // looking and telling takes 65.
+    const auto task = load_task(fixture("robot-fleet-r1-junction.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet-relay.json"));
+    const auto policy = temporal::search_policy(task, d);
+    CHECK(policy.has_value());
+    if (policy) CHECK_MSG(std::abs(policy->makespan - 35.0) < 1e-9, std::to_string(policy->makespan));
+}
+
+TEST(the_critical_path_estimate_returns_a_valid_policy_no_better_than_optimal)
+{
+    for (const auto& [t, m] : {std::pair{"robot-fleet-depot.json", "mapping-robot-fleet-depot.json"},
+                               std::pair{"robot-fleet-r1-junction.json", "mapping-robot-fleet-relay.json"}}) {
+        const auto task = load_task(fixture(t));
+        const auto d    = temporal::load_durations(task, fixture(m));
+        temporal::SearchOptions cp;
+        cp.estimate = temporal::SearchOptions::Estimate::CriticalPath;
+        const auto satisficing = temporal::search_policy(task, d, cp);
+        const auto optimal     = temporal::search_policy(task, d);
+        CHECK(satisficing.has_value() && optimal.has_value());
+        if (!satisficing || !optimal) continue;
+        std::string why;
+        CHECK_MSG(temporal::validate_policy(task, d, *satisficing, &why), why);
+        CHECK(satisficing->makespan >= optimal->makespan - 1e-9);
+    }
+}
+
+TEST(the_syntactic_baseline_finds_a_policy)
+{
+    const auto task = load_task(fixture("robot-fleet-depot.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet-depot.json"));
+    temporal::SearchOptions b2;
+    b2.overlap = temporal::SearchOptions::Overlap::Syntactic;
+    temporal::SearchStats st;
+    const auto policy = temporal::search_policy(task, d, b2, &st);
+    CHECK(policy.has_value());
+    CHECK(st.commutation_checks == 0);
+}
+
+TEST(an_admissible_policy_dispatched_by_events_never_fails)
+{
+    // Theorem 3: whatever the actual durations, as long as each action
+    // starts when what it waits for has ended.
+    for (const auto& [t, m] : {std::pair{"robot-fleet-depot.json", "mapping-robot-fleet-depot.json"},
+                               std::pair{"robot-fleet-r1-junction.json", "mapping-robot-fleet-relay.json"},
+                               std::pair{"robot-fleet.json", "mapping-robot-fleet.json"}}) {
+        const auto task = load_task(fixture(t));
+        const auto d    = temporal::load_durations(task, fixture(m));
+        const auto policy = temporal::search_policy(task, d);
+        CHECK(policy.has_value());
+        if (policy) CHECK_MSG(failures(task, *policy, temporal::Dispatch::Events, 300, 7) == 0, t);
+    }
+}
+
+TEST(the_same_policy_dispatched_by_the_clock_can_fail)
+{
+    // Example 3: r2's look is planned at 30 s, after its drive. Started at
+    // 30 s on the clock while the drive overruns, it is not applicable.
+    const auto task = load_task(fixture("robot-fleet-r1-junction.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet-relay.json"));
+    const auto policy = temporal::search_policy(task, d);
+    CHECK(policy.has_value());
+    if (!policy) return;
+    CHECK(failures(task, *policy, temporal::Dispatch::Clock, 300, 7) > 0);
+
+    // With the planned durations exactly, the clock and the events agree.
+    const auto nominal = [](std::size_t, double planned) { return planned; };
+    const auto e = temporal::execute_policy(task, *policy, nominal, 0, temporal::Dispatch::Clock);
+    CHECK_MSG(e.ok, e.failure);
+    CHECK(std::abs(e.makespan - 35.0) < 1e-9);
 }
 
 } // namespace

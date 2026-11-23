@@ -316,7 +316,10 @@ bool distinguishes(const Action& a, AgentIdx ag, EventIdx e, EventIdx f) {
 //   their announcements have trivial preconditions and eliminate no worlds at
 //   all, so a relaxation that only prunes worlds reaches its fixpoint at layer
 //   zero and reports nothing.
-bool relaxed_step(EpistemicState& m, const PlanningTask& task) {
+// `contributed`, when given, has one flag per action and is set for every
+// action whose events made progress in this step.
+bool relaxed_step(EpistemicState& m, const PlanningTask& task,
+                  std::vector<char>* contributed = nullptr) {
     const std::uint32_t nw = m.num_worlds;
 
     std::vector<bits::Word> keep(m.rel_words, 0);
@@ -330,7 +333,8 @@ bool relaxed_step(EpistemicState& m, const PlanningTask& task) {
     std::unordered_map<std::uint32_t, std::uint32_t> cut;
     std::vector<WorldIdx> buf;
 
-    for (const Action& a : task.actions) {
+    for (ActionIdx ai = 0; ai < task.actions.size(); ++ai) {
+        const Action& a = task.actions[ai];
         std::vector<EventIdx> events(a.designated_events.begin(),
                                      a.designated_events.end());
         std::sort(events.begin(), events.end());
@@ -365,6 +369,7 @@ bool relaxed_step(EpistemicState& m, const PlanningTask& task) {
                         if (it->second == id) return;
                         m.set_of[std::size_t(ag) * nw + w] = it->second;
                         progress = true;
+                        if (contributed) (*contributed)[ai] = 1;
                     });
                 }
             }
@@ -375,7 +380,8 @@ bool relaxed_step(EpistemicState& m, const PlanningTask& task) {
 
     //  World prunes.
     const auto designated = m.designated_bits();
-    for (const Action& a : task.actions) {
+    for (ActionIdx ai = 0; ai < task.actions.size(); ++ai) {
+        const Action& a = task.actions[ai];
         for (EventIdx e : a.designated_events) {
             if (e >= a.events.size()) continue;
 
@@ -390,6 +396,7 @@ bool relaxed_step(EpistemicState& m, const PlanningTask& task) {
 
             keep     = std::move(cand);
             progress = true;
+            if (contributed) (*contributed)[ai] = 1;
         }
     }
 
@@ -402,6 +409,30 @@ bool relaxed_step(EpistemicState& m, const PlanningTask& task) {
 }
 
 } // namespace
+
+std::optional<std::vector<std::vector<ActionIdx>>>
+relaxed_closure_layers(const EpistemicState& s, const PlanningTask& task) {
+    const std::vector<const Formula*> conjuncts = goal_conjuncts(*task.goal);
+    std::vector<std::vector<ActionIdx>> layers;
+
+    EpistemicState model = s;
+    for (;;) {
+        bool all = true;
+        for (const Formula* c : conjuncts) {
+            if (!model.satisfies(*c)) { all = false; break; }
+        }
+        if (all) return layers;
+        if (layers.size() >= kMaxLayers) return std::nullopt;
+
+        std::vector<char> contributed(task.actions.size(), 0);
+        if (!relaxed_step(model, task, &contributed)) return std::nullopt;
+
+        std::vector<ActionIdx> layer;
+        for (ActionIdx a = 0; a < contributed.size(); ++a)
+            if (contributed[a]) layer.push_back(a);
+        layers.push_back(std::move(layer));
+    }
+}
 
 float RelaxedClosureHeuristic::operator()(const EpistemicState& s,
                                           const PlanningTask& task) const {

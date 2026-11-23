@@ -1,4 +1,6 @@
 #pragma once
+#include <optional>
+#include <vector>
 #include "state.hpp"
 #include "task.hpp"
 
@@ -129,6 +131,14 @@ struct KnowledgeSpreadHeuristic : Heuristic {
 // Conjuncts the closure cannot resolve fall back to a residual epistemic
 // distance offset past the last layer, so the estimate degrades to a gradient
 // rather than to a constant.
+// The layers of the relaxed closure from `s` until every goal conjunct holds:
+// entry l lists the actions whose events made progress in step l. nullopt when
+// the closure reaches its fixpoint, or the layer cap, with a conjunct still
+// unresolved. The temporal critical-path estimate weighs each layer by the
+// shortest duration among its actions.
+[[nodiscard]] std::optional<std::vector<std::vector<ActionIdx>>>
+relaxed_closure_layers(const EpistemicState& s, const PlanningTask& task);
+
 enum class RelaxedAggregation { Max, Add };
 
 struct RelaxedClosureHeuristic : Heuristic {

@@ -80,6 +80,31 @@ struct SearchOptions {
     double weight{1.0};
     std::chrono::steady_clock::time_point deadline{std::chrono::steady_clock::time_point::max()};
     std::size_t max_expansions{0};    // 0 = no limit
+
+    // Which test decides whether an action may start while others run.
+    // Commutation is the exact test, and the only one under which the
+    // guarantees hold. Syntactic overlaps any two actions that neither write
+    // an atom the other reads or writes: the textbook test, kept as a
+    // baseline for evaluation (search_policy only).
+    enum class Overlap : std::uint8_t { Commutation, Syntactic };
+    Overlap overlap{Overlap::Commutation};
+
+    // The estimate the policy search deepens with. Admissible is h_adm, and
+    // the result is optimal. CriticalPath is max(h_adm, h_cp), where h_cp
+    // weighs each layer of the relaxed closure by the shortest duration among
+    // the actions that contribute to it (a running action by its remaining
+    // time). It is not admissible: the policy returned is valid but need not
+    // be optimal (search_policy only).
+    enum class Estimate : std::uint8_t { Admissible, CriticalPath };
+    Estimate estimate{Estimate::Admissible};
+
+    // How the policy search's time bound grows between iterations: the next
+    // bound is max(the root's lower bound, bound * bound_growth). Optimality
+    // does not depend on it, since each iteration returns the exact least
+    // cost within its bound; a larger factor trades fewer iterations for a
+    // last iteration that searches past the optimum. 1 steps to the next
+    // lower bound, one iteration per distinct reachable makespan.
+    double bound_growth{1.0};
 };
 
 struct SearchStats {
@@ -89,6 +114,8 @@ struct SearchStats {
     std::size_t start_checks{0};      // coherence checks for a candidate start
     std::size_t start_rejected{0};    // candidates that would break coherence
     std::size_t commutation_checks{0};
+    double      start_check_sec{0.0};   // time spent deciding starts, of elapsed_sec
+    std::size_t iterations{0};          // deepening iterations (policy search)
     double      elapsed_sec{0.0};
     bool        exhausted{false};     // the whole space was searched
 };
