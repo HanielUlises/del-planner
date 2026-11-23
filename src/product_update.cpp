@@ -347,6 +347,33 @@ product_update(const EpistemicState& s, const Action& a,
 // keeps world ids coherent between branches — running the update once per event
 // would compact ids independently and make the designated sets refer to
 // different worlds.
+namespace {
+std::optional<AgentIdx> g_branching_agent;
+std::vector<std::string> g_agent_names;   // non-empty: the actor of each action
+}  // namespace
+
+void set_branching_agent(std::optional<AgentIdx> agent) { g_branching_agent = agent; g_agent_names.clear(); }
+void set_branching_agents(std::vector<std::string> agent_names) {
+    g_branching_agent.reset();
+    g_agent_names = std::move(agent_names);
+}
+std::optional<AgentIdx> branching_agent() { return g_branching_agent; }
+
+std::optional<AgentIdx> branching_agent_of(const std::string& action_name) {
+    if (g_branching_agent || g_agent_names.empty()) return g_branching_agent;
+    // "say-w_r1_r2_r3": the schema, then the arguments, joined by '_'.
+    std::size_t at = action_name.find('_');
+    while (at != std::string::npos) {
+        const std::size_t next = action_name.find('_', at + 1);
+        const std::string arg = action_name.substr(at + 1, next == std::string::npos ? std::string::npos
+                                                                                      : next - at - 1);
+        for (std::size_t i = 0; i < g_agent_names.size(); ++i)
+            if (g_agent_names[i] == arg) return static_cast<AgentIdx>(i);
+        at = next;
+    }
+    return std::nullopt;
+}
+
 std::vector<std::pair<EventIdx, EpistemicState>>
 product_update_split(const EpistemicState& s, const Action& a,
                      Seriality seriality, const WorldCapPolicy& cap) {
@@ -386,5 +413,48 @@ product_update_split(const EpistemicState& s, const Action& a,
         results.emplace_back(eid, std::move(branch));
     }
 
-    return results;
+    const std::optional<AgentIdx> actor = branching_agent_of(a.name);
+    if (!actor || results.size() < 2 || *actor >= model.num_agents)
+        return results;
+
+    // Merge the branches the agent cannot tell apart: two branches are joined
+    // when a designated world of one has, among the agent's successors in the
+    // product model, a designated world of the other. Joined transitively.
+    const AgentIdx ag = *actor;
+    const std::size_t n = results.size();
+    std::vector<std::size_t> parent(n);
+    for (std::size_t i = 0; i < n; ++i) parent[i] = i;
+    auto find = [&](std::size_t i) {
+        while (parent[i] != i) i = parent[i] = parent[parent[i]];
+        return i;
+    };
+    std::vector<std::size_t> owner(model.num_worlds, n);
+    for (std::size_t i = 0; i < n; ++i)
+        bits::for_each(results[i].second.designated_bits(),
+                       [&](std::uint32_t w) { owner[w] = i; });
+    for (std::size_t i = 0; i < n; ++i)
+        bits::for_each(results[i].second.designated_bits(), [&](std::uint32_t w) {
+            for (const WorldIdx v : model.succ(ag, w)) {
+                const std::size_t j = owner[v];
+                if (j < n) parent[find(i)] = find(j);
+            }
+        });
+
+    std::vector<std::pair<EventIdx, EpistemicState>> merged;
+    std::vector<std::size_t> slot(n, n);
+    for (std::size_t i = 0; i < n; ++i) {
+        const std::size_t r = find(i);
+        if (slot[r] == n) {
+            slot[r] = merged.size();
+            merged.push_back(std::move(results[i]));   // results are in event order: the least event tags
+            continue;
+        }
+        EpistemicState& into = merged[slot[r]].second;
+        std::vector<bits::Word> des(into.designated_bits().begin(), into.designated_bits().end());
+        bits::for_each(results[i].second.designated_bits(),
+                       [&](std::uint32_t w) { bits::set(des, w); });
+        bits::copy_from(into.designated_bits(), des);
+        into.invalidate();
+    }
+    return merged;
 }

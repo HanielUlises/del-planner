@@ -49,6 +49,14 @@ endif()
 target_include_directories(epistemic_planner PRIVATE include)
 target_link_libraries(epistemic_planner PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
 
+# Symbolic (BDD) states: differential replay against the explicit engine.
+add_executable(symcheck tools/symcheck.cpp src/symdel.cpp ${CORE_SOURCES})
+if(ALETHEIA_NATIVE)
+  target_compile_options(symcheck PRIVATE -march=native)
+endif()
+target_include_directories(symcheck PRIVATE include)
+target_link_libraries(symcheck PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_ok OUTPUT ipo_msg)
 if(ipo_ok AND CMAKE_BUILD_TYPE STREQUAL "Release")

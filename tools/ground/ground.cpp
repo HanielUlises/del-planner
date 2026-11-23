@@ -16,8 +16,25 @@
 //
 //   ground -d domain.epddl -p problem.epddl [-l library.epddl ...] -o task.json
 //   ground export -d ... -p ... [-l ...] -o dir     (as plank: dir/<problem>.json)
+//
+// With --theory, a problem whose initial state is a finitary S5 theory is
+// written without building the state: plank's grounder enumerates every
+// valuation and compares every pair of worlds, which does not scale past a
+// few thousand worlds. The JSON then carries, instead of "initial-state",
+//
+//   "initial-theory": { "type-1": [φ, …],          designated: worlds satisfying all
+//                       "type-2": [φ, …],          worlds: valuations satisfying all
+//                       "type-3": { "A": [φ, …] }, R_A(w,v) iff w, v agree on every φ
+//                       "fixed":  { "p": true } }  fact atoms, constant in every world
+//
+// which is exactly the data plank's finitary_s5_theory_grounder builds the
+// state from (type-2 includes the C(K_i φ) formulas, as in plank).
 
 #include "epddl/grounder/grounder_helper.h"
+#include "epddl/grounder/actions/actions_grounder.h"
+#include "epddl/grounder/formulas/formulas_and_lists_grounder.h"
+#include "epddl/grounder/initial_state/finitary_s5_theory_grounder.h"
+#include "epddl/type-checker/type_checker.h"
 #include "epddl/json-printer/actions_printer.h"
 #include "epddl/json-printer/facts_printer.h"
 #include "epddl/json-printer/formulas_printer.h"
@@ -135,8 +152,81 @@ void write_initial_state(std::ostream& out, const del::state_ptr& s) {
 }
 
 int usage() {
-    std::cerr << "usage: ground [export] -d domain.epddl -p problem.epddl [-l library.epddl ...] -o task.json|dir\n";
+    std::cerr << "usage: ground [export] [--theory] -d domain.epddl -p problem.epddl [-l library.epddl ...] -o task.json|dir\n";
     return 2;
+}
+
+// --theory: ground everything but the initial state, and write the theory.
+int write_theory_task(const epddl::parser::specification_paths& spec_paths, const std::string& output) {
+    using namespace plank::epddl;
+    auto [spec, err_managers] = parser::file_parser::parse_planning_specification(spec_paths, true);
+    type_checker::context context = type_checker::do_semantic_check(spec, err_managers);
+    grounder::grounder_info info = grounder::grounder_helper::build_info(spec, context, std::move(err_managers));
+
+    const ast::finitary_S5_theory* init = nullptr;
+    for (const auto& item : std::get<0>(spec)->get_items())
+        if (std::holds_alternative<ast::initial_state_ptr>(item)) {
+            const auto& st = std::get<ast::initial_state_ptr>(item)->get_state();
+            if (std::holds_alternative<ast::finitary_S5_theory>(st)) init = &std::get<ast::finitary_S5_theory>(st);
+        }
+    if (!init) {
+        std::cerr << "--theory: the initial state is not a finitary S5 theory\n";
+        return 3;
+    }
+    const auto theory = grounder::finitary_s5_theory_grounder::build_finitary_s5_theory(*init, info);
+    auto [actions_names, actions_map, actions] = grounder::actions_grounder::build_actions(spec, info);
+    const auto goal = grounder::formulas_and_lists_grounder::build_goal(spec, info);
+    const auto& language = info.language;
+
+    ordered_json ti;
+    json libraries = json::array(), requirements = json::array();
+    for (const auto& lib : info.context.components_names.get_libraries_names()) libraries.emplace_back(lib);
+    for (const auto& req : info.context.requirements.get_total_requirements()) requirements.emplace_back(req);
+    ti["problem"]              = info.context.components_names.get_problem_name();
+    ti["domain"]               = info.context.components_names.get_domain_name();
+    ti["libraries"]            = libraries;
+    ti["requirements"]         = requirements;
+    ti["agents-number"]        = language->get_agents_number();
+    ti["atoms-number"]         = language->get_atoms_number();
+    ti["facts-number"]         = info.facts.size();
+    ti["actions-number"]       = actions.size();
+    ti["initial-state-format"] = "finitary-s5-theory";
+    ti["goal-modal-depth"]     = del::formulas_utils::get_modal_depth(goal);
+    ti["goal-size"]            = del::formulas_utils::get_size(goal);
+
+    auto formulas = [&](const del::formula_deque& fs) {
+        json a = json::array();
+        for (const auto& f : fs) a.emplace_back(printer::formulas_printer::build_formula_json(language, f));
+        return a;
+    };
+    ordered_json th, t3, fixed;
+    th["type-1"] = formulas(theory->get_type_1_formulas());
+    th["type-2"] = formulas(theory->get_type_2_formulas());
+    for (del::agent i = 0; i < language->get_agents_number(); ++i)
+        t3[language->get_agent_name(i)] = formulas(theory->get_type_3_formulas(i));
+    th["type-3"] = t3;
+    fixed = json::object();
+    for (del::atom p = 0; p < language->get_atoms_number(); ++p)
+        if (language->is_fact(p)) fixed[language->get_atom_name(p)] = bool(info.facts.get_bitset()[p]);
+    th["fixed"] = fixed;
+
+    std::ofstream out(output);
+    if (!out) {
+        std::cerr << "cannot write " << output << "\n";
+        return 1;
+    }
+    out << "{\n\"planning-task-info\": " << ti.dump(2)
+        << ",\n\"language\": " << printer::language_printer::build_language_json(language).dump(2)
+        << ",\n\"facts\": " << printer::facts_printer::build_facts_json(info.language, info.facts).dump(2)
+        << ",\n\"initial-theory\": " << th.dump(2)
+        << ",\n\"actions\": " << printer::actions_printer::build_actions_json(actions_names, actions_map).dump(2)
+        << ",\n\"goal\": " << printer::formulas_printer::build_formula_json(language, goal).dump(2)
+        << "\n}\n";
+    if (!out) {
+        std::cerr << "write failed: " << output << "\n";
+        return 1;
+    }
+    return 0;
 }
 
 } // namespace
@@ -144,6 +234,7 @@ int usage() {
 int main(int argc, char** argv) {
     std::string domain, problem, output;
     std::vector<std::string> libraries;
+    bool theory = false;
     int first = 1;
     const bool plank_style = argc > 1 && std::string(argv[1]) == "export";
     if (plank_style) first = 2;
@@ -152,6 +243,7 @@ int main(int argc, char** argv) {
         if ((a == "-d" || a == "--domain") && k + 1 < argc) domain = argv[++k];
         else if ((a == "-p" || a == "--problem") && k + 1 < argc) problem = argv[++k];
         else if ((a == "-o" || a == "--output") && k + 1 < argc) output = argv[++k];
+        else if (a == "--theory") theory = true;
         else if (a == "-l" || a == "--libraries") {
             while (k + 1 < argc && argv[k + 1][0] != '-') libraries.push_back(argv[++k]);
         } else return usage();
@@ -168,6 +260,7 @@ int main(int argc, char** argv) {
     if (failed) return 1;
 
     try {
+        if (theory) return write_theory_task(spec_paths, output);
         const auto [task, info] = epddl::grounder::grounder_helper::ground(spec_paths, true);
         const auto language = task.initial_state->get_language();
 
