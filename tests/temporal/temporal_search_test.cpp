@@ -3,6 +3,8 @@
 #include "bisimulation.hpp"
 #include "parser.hpp"
 #include "temporal_execute.hpp"
+#include "search.hpp"
+#include "strategy.hpp"
 #include "temporal_search.hpp"
 
 #include "check.hpp"
@@ -388,6 +390,57 @@ TEST(the_same_policy_dispatched_by_the_clock_can_fail)
     const auto e = temporal::execute_policy(task, *policy, nominal, 0, temporal::Dispatch::Clock);
     CHECK_MSG(e.ok, e.failure);
     CHECK(std::abs(e.makespan - 35.0) < 1e-9);
+}
+
+// ── Scheduling an untimed policy ────────────────────────────────────────────
+
+double sequential(const PlanningTask& task, const temporal::Durations& d,
+                  const std::shared_ptr<PlanNode>& node)
+{
+    if (!node) return 0.0;
+    double worst = 0.0;
+    for (const auto& [e, child] : node->branches) worst = std::max(worst, sequential(task, d, child));
+    return d[task.action_index.at(node->action)] + worst;
+}
+
+TEST(a_scheduled_untimed_policy_is_admissible_and_between_the_bounds)
+{
+    for (const auto& [t, m] : {std::pair{"robot-fleet-depot.json", "mapping-robot-fleet-depot.json"},
+                               std::pair{"robot-fleet-r1-junction.json", "mapping-robot-fleet-relay.json"},
+                               std::pair{"robot-fleet.json", "mapping-robot-fleet.json"}}) {
+        const auto task = load_task(fixture(t));
+        const auto d    = temporal::load_durations(task, fixture(m));
+        const auto h = make_heuristic("rpg", task);
+        const auto untimed = aostar::search(task, *h);
+        CHECK(untimed.has_value());
+        if (!untimed) continue;
+
+        const auto scheduled = temporal::schedule_untimed(task, d, untimed->plan_tree);
+        const auto optimal   = temporal::search_policy(task, d);
+        CHECK_MSG(scheduled.has_value(), t);
+        if (!scheduled || !optimal) continue;
+        std::string why;
+        CHECK_MSG(temporal::validate_policy(task, d, *scheduled, &why), why);
+        CHECK(scheduled->makespan <= sequential(task, d, untimed->plan_tree) + 1e-9);
+        CHECK(scheduled->makespan >= optimal->makespan - 1e-9);
+        CHECK_MSG(failures(task, *scheduled, temporal::Dispatch::Events, 200, 3) == 0, t);
+    }
+}
+
+TEST(the_depot_schedule_overlaps_what_commutes)
+{
+    // The untimed depot policy has six steps in a branch, 72 s in sequence.
+    // Scheduled with StartCheck, its drives and looks overlap where they
+    // commute, as the optimal policy's do.
+    const auto task = load_task(fixture("robot-fleet-depot.json"));
+    const auto d    = temporal::load_durations(task, fixture("mapping-robot-fleet-depot.json"));
+    const auto h = make_heuristic("rpg", task);
+    const auto untimed = aostar::search(task, *h);
+    CHECK(untimed.has_value());
+    if (!untimed) return;
+    const auto scheduled = temporal::schedule_untimed(task, d, untimed->plan_tree);
+    CHECK(scheduled.has_value());
+    if (scheduled) CHECK_MSG(scheduled->makespan < 72.0 - 1e-9, std::to_string(scheduled->makespan));
 }
 
 } // namespace

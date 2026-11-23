@@ -632,9 +632,14 @@ public:
             if (m.solved) return {m.cost <= bound + kEps, m.cost};
             if (m.lower > bound + kEps) return {false, m.lower};
         }
+        if (const double dominated = dominated_lower(key); dominated > bound + kEps) {
+            ++stats_.dominated;
+            return {false, dominated};
+        }
 
         if (n.running.empty() && n.model.satisfies(*task_.goal)) {
             memo_[key] = Memo{true, 0.0, 0.0, kGoal};
+            record(key, 0.0);
             return {true, 0.0};
         }
 
@@ -720,11 +725,13 @@ public:
 
         if (best <= bound + kEps) {
             memo_[key] = Memo{true, best, best, move};
+            record(key, best);
             return {true, best};
         }
         Memo& m = memo_[key];
         m.solved = false;
         m.lower  = std::max(m.lower, lower);
+        record(key, m.lower);
         return {false, lower};
     }
 
@@ -753,6 +760,54 @@ public:
                       [](const Step& x, const Step& y) { return x.action < y.action; });
             return epoch;
         }
+    }
+
+    // Dominance on remaining times. Two nodes with the same model, the same
+    // running actions and the same starts still open differ only in when the
+    // running actions end, and the one whose actions all end no later can do
+    // whatever the other can, no later (Lemma: cost is monotone in the
+    // remaining times). So a lower bound proved for a node is a lower bound
+    // for every node of its bucket whose remaining times are all at least
+    // its own.
+    static Key bucket_of(const Key& key, std::vector<std::int64_t>* times)
+    {
+        Key bucket = key;
+        for (auto& [a, r] : bucket.remaining) {
+            if (r < 0) continue;              // the open-starts marker
+            if (times) times->push_back(r);
+            r = 0;
+        }
+        return bucket;
+    }
+
+    double dominated_lower(const Key& key) const
+    {
+        std::vector<std::int64_t> times;
+        const Key bucket = bucket_of(key, &times);
+        const auto it = buckets_.find(bucket);
+        if (it == buckets_.end()) return 0.0;
+        double best = 0.0;
+        for (const auto& [other, lower] : it->second) {
+            if (lower <= best) continue;
+            bool earlier = true;
+            for (std::size_t i = 0; i < times.size(); ++i)
+                if (other[i] > times[i]) { earlier = false; break; }
+            if (earlier) best = lower;
+        }
+        return best;
+    }
+
+    void record(const Key& key, double lower)
+    {
+        std::vector<std::int64_t> times;
+        auto& entries = buckets_[bucket_of(key, &times)];
+        for (auto& [other, known] : entries) {
+            if (other == times) {
+                known = std::max(known, lower);
+                return;
+            }
+        }
+        entries.emplace_back(std::move(times), lower);
     }
 
     double estimate(const BNode& n) const
@@ -817,6 +872,8 @@ private:
     double               min_duration_{kInf};
     double               max_duration_{0.0};
     std::unordered_map<Key, Memo, KeyHash> memo_;
+    std::unordered_map<Key, std::vector<std::pair<std::vector<std::int64_t>, double>>, KeyHash>
+        buckets_;
     mutable std::unordered_map<Key, double, KeyHash> critical_path_;
     mutable Oracle       oracle_;
 };
@@ -864,6 +921,125 @@ search_policy(const PlanningTask& task, const Durations& durations, const Search
         std::chrono::duration<double>(std::chrono::steady_clock::now() - started_at).count();
     if (stats_out) *stats_out = stats;
     return policy;
+}
+
+std::optional<TemporalPolicy>
+schedule_untimed(const PlanningTask& task, const Durations& durations,
+                 const std::shared_ptr<PlanNode>& tree, std::size_t max_concurrency)
+{
+    struct Cursor {
+        std::shared_ptr<PlanNode> next;      // the next untimed node to start
+        std::optional<ActionIdx>  waiting;   // a running action whose outcome picks it
+        std::shared_ptr<PlanNode> pending;   // the untimed node of `waiting`
+    };
+
+    const auto attempt = [&](std::size_t k) -> std::optional<TemporalPolicy> {
+        Oracle oracle(task);
+        SearchStats stats;
+        TemporalPolicy policy;
+        bool failed = false;
+
+        const std::function<std::shared_ptr<const Epoch>(BNode, Cursor)> build =
+            [&](BNode n, Cursor c) -> std::shared_ptr<const Epoch> {
+            auto epoch = std::make_shared<Epoch>();
+            epoch->t = n.t;
+
+            while (!c.waiting && c.next) {
+                const auto found = task.action_index.find(c.next->action);
+                if (found == task.action_index.end()) { failed = true; return nullptr; }
+                const ActionIdx b = found->second;
+                const auto run = actions_of(n.running);
+                if (std::find(run.begin(), run.end(), b) != run.end()) break;
+                if (run.size() >= k) break;
+                if (!task.actions[b].applicable(n.model)) break;
+                const auto at = branch_intermediates(oracle, n.model, run);
+                if (!at || !may_start_branching(oracle, *at, run, b, stats)) break;
+
+                epoch->starts.push_back(Step{b, n.t, durations[b]});
+                n = started(n, b, durations[b]);
+                if (c.next->branches.size() == 1) {
+                    c.next = c.next->branches.front().second;
+                } else {
+                    c.waiting = b;
+                    c.pending = c.next;
+                    c.next    = nullptr;
+                }
+            }
+
+            if (n.running.empty()) {
+                // Nothing runs and nothing more could start: the branch ends
+                // here, so the untimed policy must have ended too.
+                if (c.next || c.waiting || !n.model.satisfies(*task.goal)) {
+                    failed = true;
+                    return nullptr;
+                }
+                epoch->advance_to = n.t;
+                ++policy.leaves;
+                policy.makespan = std::max(policy.makespan, n.t);
+                return epoch;
+            }
+
+            // Advance, keeping the event every ending action fired, so the
+            // continuation of an awaited sensing action can be looked up.
+            double t_next = std::numeric_limits<double>::infinity();
+            for (const auto& r : n.running) t_next = std::min(t_next, r.end);
+            std::vector<Running> rest;
+            std::vector<ActionIdx> ending;
+            for (const auto& r : n.running) {
+                if (ticks(r.end) == ticks(t_next)) ending.push_back(r.action);
+                else rest.push_back(r);
+            }
+            struct Child { Observed obs; std::vector<std::pair<ActionIdx, EventIdx>> fired; EpistemicState s; };
+            std::vector<Child> children{{{}, {}, n.model}};
+            for (const ActionIdx a : ending) {
+                std::vector<Child> next;
+                for (auto& ch : children) {
+                    const auto& outs = oracle.outcomes(ch.s, a);
+                    if (outs.empty()) { failed = true; return nullptr; }
+                    for (const auto& [e, after] : outs) {
+                        Child c2{ch.obs, ch.fired, after};
+                        if (outs.size() > 1) c2.obs.emplace_back(a, e);
+                        c2.fired.emplace_back(a, e);
+                        next.push_back(std::move(c2));
+                    }
+                }
+                children = std::move(next);
+            }
+
+            epoch->advance_to = t_next;
+            for (auto& ch : children) {
+                Cursor c2 = c;
+                if (c.waiting) {
+                    const auto f = std::find_if(ch.fired.begin(), ch.fired.end(),
+                                                [&](const auto& p) { return p.first == *c.waiting; });
+                    if (f != ch.fired.end()) {
+                        const auto br = std::find_if(
+                            c.pending->branches.begin(), c.pending->branches.end(),
+                            [&](const auto& p) { return p.first == f->second; });
+                        if (br == c.pending->branches.end()) { failed = true; return nullptr; }
+                        c2.next = br->second;
+                        c2.waiting.reset();
+                        c2.pending.reset();
+                    }
+                }
+                auto sub = build(BNode{std::move(ch.s), rest, t_next, std::nullopt}, c2);
+                if (failed) return nullptr;
+                epoch->branches.push_back(Branch{std::move(ch.obs), std::move(sub)});
+            }
+            return epoch;
+        };
+
+        policy.root = build(BNode{bisim_contract(task.init), {}, 0.0, std::nullopt},
+                            Cursor{tree, std::nullopt, nullptr});
+        if (failed || !policy.root) return std::nullopt;
+        if (!validate_policy(task, durations, policy)) return std::nullopt;
+        return policy;
+    };
+
+    // Overlapping where StartCheck allows; failing that, one at a time, which
+    // is the untimed policy itself.
+    if (auto p = attempt(std::max<std::size_t>(1, max_concurrency))) return p;
+    return attempt(1);
 }
 
 bool validate_policy(const PlanningTask& task, const Durations& durations,
