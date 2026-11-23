@@ -25,6 +25,7 @@
 // state it can end in. Branching on sensing outcomes is the AND-OR search that
 // builds on this one.
 
+#include "search.hpp"
 #include "state.hpp"
 #include "task.hpp"
 #include "temporal.hpp"
@@ -116,6 +117,7 @@ struct SearchStats {
     std::size_t commutation_checks{0};
     double      start_check_sec{0.0};   // time spent deciding starts, of elapsed_sec
     std::size_t iterations{0};          // deepening iterations (policy search)
+    std::size_t dominated{0};           // nodes pruned by an earlier-ending sibling
     double      elapsed_sec{0.0};
     bool        exhausted{false};     // the whole space was searched
 };
@@ -181,6 +183,19 @@ struct TemporalPolicy {
 [[nodiscard]] std::optional<TemporalPolicy>
 search_policy(const PlanningTask& task, const Durations& durations,
               const SearchOptions& options = {}, SearchStats* stats = nullptr);
+
+// An untimed policy (a tree of actions branching on sensing outcomes, as
+// aostar::search returns), scheduled as a temporal policy: each action of a
+// branch starts as early as StartCheck allows, after the sensing action whose
+// outcome selects it has ended, with at most `max_concurrency` running. Every
+// start satisfies StartCheck, so the result is admissible, and no action
+// starts later than it would run in sequence, so its makespan is at most the
+// untimed policy's run in sequence. Not optimal: it keeps the untimed policy's
+// actions. It is what the planner returns when the optimal search does not
+// finish in time. nullopt only if the untimed policy does not reach the goal.
+[[nodiscard]] std::optional<TemporalPolicy>
+schedule_untimed(const PlanningTask& task, const Durations& durations,
+                 const std::shared_ptr<PlanNode>& tree, std::size_t max_concurrency = 3);
 
 // Replay every branch of a policy: every start applicable and coherent with
 // what runs, every outcome combination an advance can produce covered by a

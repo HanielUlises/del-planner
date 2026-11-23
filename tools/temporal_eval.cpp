@@ -81,6 +81,7 @@ json search(const PlanningTask& task, const temporal::Durations& d, std::size_t 
     j["leaves"]   = p ? p->leaves : 0;
     j["expanded"] = st.expanded;
     j["iterations"] = st.iterations;
+    j["dominated"] = st.dominated;
     j["seconds"]  = st.elapsed_sec;
     j["start_checks"]      = st.start_checks;
     j["start_rejected"]    = st.start_rejected;
@@ -136,6 +137,13 @@ json configuration(const PlanningTask& task, const temporal::Durations& d,
     j["B3"] = {{"makespan", b3}, {"steps", steps}};
 
     std::optional<temporal::TemporalPolicy> ours, b2;
+    // The untimed policy scheduled with StartCheck: what the planner falls
+    // back to when the optimal search does not finish.
+    const auto sched_start = Clock::now();
+    const auto sched = temporal::schedule_untimed(task, d, untimed, k);
+    j["sched"] = {{"found", sched.has_value()},
+                  {"makespan", sched ? json(sched->makespan) : json(nullptr)},
+                  {"seconds", std::chrono::duration<double>(Clock::now() - sched_start).count()}};
     j["ours"] = search(task, d, k, timeout, O::Overlap::Commutation, O::Estimate::Admissible, &ours);
     j["cp"]   = search(task, d, k, timeout, O::Overlap::Commutation, O::Estimate::CriticalPath, nullptr);
     j["B2"]   = search(task, d, k, timeout, O::Overlap::Syntactic, O::Estimate::Admissible, &b2);
@@ -146,6 +154,7 @@ json configuration(const PlanningTask& task, const temporal::Durations& d,
             j["noise"]["ours_clock"]  = noisy(task, *ours, runs, temporal::Dispatch::Clock, seed);
         }
         if (b2) j["noise"]["B2_events"] = noisy(task, *b2, runs, temporal::Dispatch::Events, seed);
+        if (sched) j["noise"]["sched_events"] = noisy(task, *sched, runs, temporal::Dispatch::Events, seed);
     }
     return j;
 }
