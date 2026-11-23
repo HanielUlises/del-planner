@@ -1,6 +1,7 @@
 #include "temporal_search.hpp"
 
 #include "bisimulation.hpp"
+#include "heuristic.hpp"
 #include "world_cap_policy.hpp"
 
 #include <nlohmann/json.hpp>
@@ -541,7 +542,10 @@ public:
                  SearchStats& stats)
     : task_(task), d_(d), o_(o), stats_(stats)
     {
-        for (const double x : d_.of) min_duration_ = std::min(min_duration_, x);
+        for (const double x : d_.of) {
+            min_duration_ = std::min(min_duration_, x);
+            max_duration_ = std::max(max_duration_, x);
+        }
     }
 
     struct Result {
@@ -574,10 +578,27 @@ public:
         int    move = kNone;
         double lower = kInf;
 
-        // start b: no time passes.
+        // start b: no time passes. Which starts are allowed is decided first,
+        // and timed on its own, before any of them is searched.
         if (n.running.size() < o_.max_concurrency) {
             const auto run = actions_of(n.running);
-            if (const auto at = branch_intermediates(task_, n.model, run)) {
+            std::vector<ActionIdx> allowed;
+            const auto checking = std::chrono::steady_clock::now();
+            if (o_.overlap == SearchOptions::Overlap::Syntactic) {
+                for (ActionIdx b = 0; b < task_.actions.size(); ++b) {
+                    if (std::find(run.begin(), run.end(), b) != run.end()) continue;
+                    if (!task_.actions[b].applicable(n.model)) continue;
+                    ++stats_.start_checks;
+                    const bool independent = std::all_of(run.begin(), run.end(), [&](ActionIdx r) {
+                        return syntactically_independent(task_.actions[b], task_.actions[r]);
+                    });
+                    if (!independent) {
+                        ++stats_.start_rejected;
+                        continue;
+                    }
+                    allowed.push_back(b);
+                }
+            } else if (const auto at = branch_intermediates(task_, n.model, run)) {
                 for (ActionIdx b = 0; b < task_.actions.size(); ++b) {
                     if (std::find(run.begin(), run.end(), b) != run.end()) continue;
                     if (!task_.actions[b].applicable(n.model)) continue;
@@ -585,14 +606,20 @@ public:
                         ++stats_.start_rejected;
                         continue;
                     }
-                    ++stats_.generated;
-                    const Result r = solve(started(n, b, d_[b]), std::min(bound, best));
-                    if (r.solved && r.value < best - kEps) {
-                        best = r.value;
-                        move = static_cast<int>(b);
-                    } else if (!r.solved) {
-                        lower = std::min(lower, r.value);
-                    }
+                    allowed.push_back(b);
+                }
+            }
+            stats_.start_check_sec += std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - checking).count();
+
+            for (const ActionIdx b : allowed) {
+                ++stats_.generated;
+                const Result r = solve(started(n, b, d_[b]), std::min(bound, best));
+                if (r.solved && r.value < best - kEps) {
+                    best = r.value;
+                    move = static_cast<int>(b);
+                } else if (!r.solved) {
+                    lower = std::min(lower, r.value);
                 }
             }
         }
@@ -660,12 +687,45 @@ public:
 
     double estimate(const BNode& n) const
     {
+        double admissible = 0.0;
         if (!n.running.empty()) {
             double latest = n.t;
             for (const auto& r : n.running) latest = std::max(latest, r.end);
-            return latest - n.t;
+            admissible = latest - n.t;
+        } else if (!n.model.satisfies(*task_.goal)) {
+            admissible = min_duration_;
         }
-        return n.model.satisfies(*task_.goal) ? 0.0 : min_duration_;
+        if (o_.estimate == SearchOptions::Estimate::Admissible) return admissible;
+
+        // h_cp is a fixpoint over the model, so it is cached by the same key
+        // the results are memoised under.
+        const Key key = key_of(n);
+        auto it = critical_path_.find(key);
+        if (it == critical_path_.end())
+            it = critical_path_.emplace(key, critical_path(n)).first;
+        return std::max(admissible, it->second);
+    }
+
+    // The relaxed closure's layers, each weighed by the shortest duration
+    // among the actions that contribute to it; a running action counts with
+    // its remaining time. A closure that never resolves the goal costs one
+    // longest action past what it did resolve.
+    double critical_path(const BNode& n) const
+    {
+        const auto layers = relaxed_closure_layers(n.model, task_);
+        if (!layers) return max_duration_;
+        double total = 0.0;
+        for (const auto& layer : *layers) {
+            double cheapest = kInf;
+            for (const ActionIdx a : layer) {
+                double d = d_[a];
+                for (const auto& r : n.running)
+                    if (r.action == a) d = r.end - n.t;
+                cheapest = std::min(cheapest, d);
+            }
+            if (std::isfinite(cheapest)) total += cheapest;
+        }
+        return total;
     }
 
 private:
@@ -685,7 +745,9 @@ private:
     const SearchOptions& o_;
     SearchStats&         stats_;
     double               min_duration_{kInf};
+    double               max_duration_{0.0};
     std::unordered_map<Key, Memo, KeyHash> memo_;
+    mutable std::unordered_map<Key, double, KeyHash> critical_path_;
 };
 
 } // namespace
