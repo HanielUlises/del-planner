@@ -97,6 +97,14 @@ struct SearchOptions {
     // be optimal (search_policy only).
     enum class Estimate : std::uint8_t { Admissible, CriticalPath };
     Estimate estimate{Estimate::Admissible};
+
+    // How the policy search's time bound grows between iterations: the next
+    // bound is max(the root's lower bound, bound * bound_growth). Optimality
+    // does not depend on it, since each iteration returns the exact least
+    // cost within its bound; a larger factor trades fewer iterations for a
+    // last iteration that searches past the optimum. 1 steps to the next
+    // lower bound, one iteration per distinct reachable makespan.
+    double bound_growth{1.0};
 };
 
 struct SearchStats {
@@ -107,6 +115,7 @@ struct SearchStats {
     std::size_t start_rejected{0};    // candidates that would break coherence
     std::size_t commutation_checks{0};
     double      start_check_sec{0.0};   // time spent deciding starts, of elapsed_sec
+    std::size_t iterations{0};          // deepening iterations (policy search)
     double      elapsed_sec{0.0};
     bool        exhausted{false};     // the whole space was searched
 };

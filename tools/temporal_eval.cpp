@@ -9,6 +9,7 @@
 //   --timeout S      per search, seconds (default 120)
 //   --runs N         noisy executions per policy (default 1000)
 //   --seeds N        random-duration seeds, U[1,10] s (default 0)
+//   --growth G       bound growth of the policy search (default 1.0)
 //   --emit DIR       write each seed's durations to DIR/<label>-seed<i>.json,
 //                    in the action-mapping shape, for the B1 tool
 //
@@ -58,12 +59,15 @@ std::pair<double, int> sequential(const std::shared_ptr<PlanNode>& node, const P
     return {d[task.action_index.at(node->action)] + worst, steps + 1};
 }
 
+double g_growth = 1.0;
+
 json search(const PlanningTask& task, const temporal::Durations& d, std::size_t k, double timeout,
             temporal::SearchOptions::Overlap overlap, temporal::SearchOptions::Estimate estimate,
             std::optional<temporal::TemporalPolicy>* out)
 {
     temporal::SearchOptions o;
     o.max_concurrency = k;
+    o.bound_growth = g_growth;
     o.overlap  = overlap;
     o.estimate = estimate;
     o.deadline = Clock::now() + std::chrono::duration_cast<Clock::duration>(
@@ -76,6 +80,7 @@ json search(const PlanningTask& task, const temporal::Durations& d, std::size_t 
     j["makespan"] = p ? json(p->makespan) : json(nullptr);
     j["leaves"]   = p ? p->leaves : 0;
     j["expanded"] = st.expanded;
+    j["iterations"] = st.iterations;
     j["seconds"]  = st.elapsed_sec;
     j["start_checks"]      = st.start_checks;
     j["start_rejected"]    = st.start_rejected;
@@ -167,6 +172,7 @@ int main(int argc, char** argv)
         else if (a == "--runs") runs = std::stoul(v);
         else if (a == "--seeds") seeds = std::stoul(v);
         else if (a == "--emit") emit = v;
+        else if (a == "--growth") g_growth = std::stod(v);
     }
 
     const PlanningTask task = load_task(task_path);

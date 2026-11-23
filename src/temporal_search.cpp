@@ -411,11 +411,70 @@ namespace {
 
 using Observed = std::vector<std::pair<ActionIdx, EventIdx>>;
 
+// Outcomes and commutation verdicts, memoised. Both depend on a contracted
+// state only up to bisimulation (Lemma 2 for commutation), so they are keyed
+// by its fingerprint, and the same model reached with different running sets
+// or at different times is decided once. Every state passed in is contracted.
+class Oracle {
+public:
+    using Outs = std::vector<std::pair<EventIdx, EpistemicState>>;
+
+    explicit Oracle(const PlanningTask& task)
+    : task_(task), cap_(make_world_cap_policy(task.partial_obs)) {}
+
+    const PlanningTask& task() const { return task_; }
+
+    const Outs& outcomes(const EpistemicState& s, ActionIdx a)
+    {
+        const OutKey key{s.fingerprint(), a};
+        auto it = outcomes_.find(key);
+        if (it == outcomes_.end())
+            it = outcomes_.emplace(key, temporal::outcomes(task_, s, task_.actions[a], cap_)).first;
+        return it->second;
+    }
+
+    bool commute(const EpistemicState& s, ActionIdx a, ActionIdx b)
+    {
+        if (a > b) std::swap(a, b);   // the verdict is symmetric
+        const PairKey key{s.fingerprint(), a, b};
+        if (const auto it = verdicts_.find(key); it != verdicts_.end()) return it->second;
+        const bool v = temporal::commutes(task_, s, a, b, cap_).commute();
+        verdicts_.emplace(key, v);
+        return v;
+    }
+
+private:
+    struct OutKey {
+        Fingerprint fp;
+        ActionIdx   a;
+        friend bool operator==(const OutKey&, const OutKey&) = default;
+    };
+    struct PairKey {
+        Fingerprint fp;
+        ActionIdx   a, b;
+        friend bool operator==(const PairKey&, const PairKey&) = default;
+    };
+    struct Hash {
+        std::size_t operator()(const OutKey& k) const noexcept
+        { return FingerprintHash{}(k.fp) ^ (std::size_t(k.a) * 0x9E3779B97F4A7C15ULL); }
+        std::size_t operator()(const PairKey& k) const noexcept
+        {
+            return FingerprintHash{}(k.fp) ^ (std::size_t(k.a) * 0x9E3779B97F4A7C15ULL) ^
+                   (std::size_t(k.b) * 0xC2B2AE3D27D4EB4FULL);
+        }
+    };
+
+    const PlanningTask& task_;
+    WorldCapPolicy cap_;
+    std::unordered_map<OutKey, Outs, Hash>  outcomes_;
+    std::unordered_map<PairKey, bool, Hash> verdicts_;
+};
+
 // For each subset of `running` ended, every state the model can be in: one
 // per combination of the ended actions' outcomes. nullopt where some ended
 // action has no outcome at all.
 std::optional<std::vector<std::vector<EpistemicState>>>
-branch_intermediates(const PlanningTask& task, const EpistemicState& s,
+branch_intermediates(Oracle& oracle, const EpistemicState& s,
                      const std::vector<ActionIdx>& running)
 {
     const std::size_t n = running.size();
@@ -426,30 +485,28 @@ branch_intermediates(const PlanningTask& task, const EpistemicState& s,
         for (std::size_t i = 0; i < n; ++i)
             if (mask & (std::size_t{1} << i)) high = i;
         for (const auto& base : at[mask & ~(std::size_t{1} << high)]) {
-            auto outs = outcomes(task, base, task.actions[running[high]], cap_of(task));
+            const auto& outs = oracle.outcomes(base, running[high]);
             if (outs.empty()) return std::nullopt;
-            for (auto& [e, st] : outs) at[mask].push_back(std::move(st));
+            for (const auto& [e, st] : outs) at[mask].push_back(st);
         }
     }
     return at;
 }
 
-bool coherent_branching(const PlanningTask& task, const EpistemicState& s,
+bool coherent_branching(Oracle& oracle, const EpistemicState& s,
                         const std::vector<ActionIdx>& running)
 {
-    const auto at = branch_intermediates(task, s, running);
+    const auto at = branch_intermediates(oracle, s, running);
     if (!at) return false;
     const std::size_t n = running.size();
     for (std::size_t mask = 0; mask < at->size(); ++mask) {
         for (const auto& st : (*at)[mask]) {
             for (std::size_t i = 0; i < n; ++i) {
                 if (mask & (std::size_t{1} << i)) continue;
-                if (outcomes(task, st, task.actions[running[i]], cap_of(task)).empty())
-                    return false;
+                if (oracle.outcomes(st, running[i]).empty()) return false;
                 for (std::size_t j = i + 1; j < n; ++j) {
                     if (mask & (std::size_t{1} << j)) continue;
-                    if (!commutes(task, st, running[i], running[j], cap_of(task)).commute())
-                        return false;
+                    if (!oracle.commute(st, running[i], running[j])) return false;
                 }
             }
         }
@@ -457,7 +514,7 @@ bool coherent_branching(const PlanningTask& task, const EpistemicState& s,
     return true;
 }
 
-bool may_start_branching(const PlanningTask& task,
+bool may_start_branching(Oracle& oracle,
                          const std::vector<std::vector<EpistemicState>>& at,
                          const std::vector<ActionIdx>& running, ActionIdx b, SearchStats& stats)
 {
@@ -465,11 +522,11 @@ bool may_start_branching(const PlanningTask& task,
     const std::size_t n = running.size();
     for (std::size_t mask = 0; mask < at.size(); ++mask) {
         for (const auto& st : at[mask]) {
-            if (outcomes(task, st, task.actions[b], cap_of(task)).empty()) return false;
+            if (oracle.outcomes(st, b).empty()) return false;
             for (std::size_t i = 0; i < n; ++i) {
                 if (mask & (std::size_t{1} << i)) continue;
                 ++stats.commutation_checks;
-                if (!commutes(task, st, b, running[i], cap_of(task)).commute()) return false;
+                if (!oracle.commute(st, b, running[i])) return false;
             }
         }
     }
@@ -480,18 +537,28 @@ struct BNode {
     EpistemicState       model;
     std::vector<Running> running;     // by action index
     double               t{0.0};
+    // The last action started at time t, if the node was reached by a start.
+    // Starts at one decision point are made in increasing action order: the
+    // node a set of starts reaches does not depend on their order, and
+    // coherence is a property of the running set that every subset of a
+    // coherent set shares, so every set reachable in some order is reachable
+    // in this one.
+    std::optional<ActionIdx> last_start;
 };
 
 Key key_of(const BNode& n)
 {
     Key k{n.model.fingerprint(), {}};
     for (const auto& r : n.running) k.remaining.emplace_back(r.action, ticks(r.end - n.t));
+    // Which starts are still open is part of what the node can do. A remaining
+    // time is positive, so -1 marks this entry apart.
+    if (n.last_start) k.remaining.emplace_back(*n.last_start, -1);
     return k;
 }
 
 BNode started(const BNode& n, ActionIdx b, double duration)
 {
-    BNode next{n.model, n.running, n.t};
+    BNode next{n.model, n.running, n.t, b};
     next.running.push_back({b, n.t + duration});
     std::sort(next.running.begin(), next.running.end(),
               [](const Running& x, const Running& y) { return x.action < y.action; });
@@ -500,7 +567,7 @@ BNode started(const BNode& n, ActionIdx b, double duration)
 
 // Advance to the earliest end: one child per combination of the observed
 // outcomes of the actions ending then. nullopt if an end has no outcome.
-std::optional<std::vector<std::pair<Observed, BNode>>> advanced(const PlanningTask& task,
+std::optional<std::vector<std::pair<Observed, BNode>>> advanced(Oracle& oracle,
                                                                  const BNode& n)
 {
     double t_next = std::numeric_limits<double>::infinity();
@@ -517,12 +584,12 @@ std::optional<std::vector<std::pair<Observed, BNode>>> advanced(const PlanningTa
     for (const ActionIdx a : ending) {
         std::vector<std::pair<Observed, EpistemicState>> next;
         for (auto& [obs, st] : states) {
-            auto outs = outcomes(task, st, task.actions[a], cap_of(task));
+            const auto& outs = oracle.outcomes(st, a);
             if (outs.empty()) return std::nullopt;
-            for (auto& [e, after] : outs) {
+            for (const auto& [e, after] : outs) {
                 Observed o = obs;
                 if (outs.size() > 1) o.emplace_back(a, e);
-                next.emplace_back(std::move(o), std::move(after));
+                next.emplace_back(std::move(o), after);
             }
         }
         states = std::move(next);
@@ -530,7 +597,8 @@ std::optional<std::vector<std::pair<Observed, BNode>>> advanced(const PlanningTa
 
     std::vector<std::pair<Observed, BNode>> out;
     out.reserve(states.size());
-    for (auto& [obs, st] : states) out.emplace_back(std::move(obs), BNode{std::move(st), rest, t_next});
+    for (auto& [obs, st] : states)
+        out.emplace_back(std::move(obs), BNode{std::move(st), rest, t_next, std::nullopt});
     return out;
 }
 
@@ -540,7 +608,7 @@ class PolicySearch {
 public:
     PolicySearch(const PlanningTask& task, const Durations& d, const SearchOptions& o,
                  SearchStats& stats)
-    : task_(task), d_(d), o_(o), stats_(stats)
+    : task_(task), d_(d), o_(o), stats_(stats), oracle_(task)
     {
         for (const double x : d_.of) {
             min_duration_ = std::min(min_duration_, x);
@@ -585,7 +653,8 @@ public:
             std::vector<ActionIdx> allowed;
             const auto checking = std::chrono::steady_clock::now();
             if (o_.overlap == SearchOptions::Overlap::Syntactic) {
-                for (ActionIdx b = 0; b < task_.actions.size(); ++b) {
+                const ActionIdx first = n.last_start ? *n.last_start + 1 : 0;
+                for (ActionIdx b = first; b < task_.actions.size(); ++b) {
                     if (std::find(run.begin(), run.end(), b) != run.end()) continue;
                     if (!task_.actions[b].applicable(n.model)) continue;
                     ++stats_.start_checks;
@@ -598,11 +667,12 @@ public:
                     }
                     allowed.push_back(b);
                 }
-            } else if (const auto at = branch_intermediates(task_, n.model, run)) {
-                for (ActionIdx b = 0; b < task_.actions.size(); ++b) {
+            } else if (const auto at = branch_intermediates(oracle_, n.model, run)) {
+                const ActionIdx first = n.last_start ? *n.last_start + 1 : 0;
+                for (ActionIdx b = first; b < task_.actions.size(); ++b) {
                     if (std::find(run.begin(), run.end(), b) != run.end()) continue;
                     if (!task_.actions[b].applicable(n.model)) continue;
-                    if (!may_start_branching(task_, *at, run, b, stats_)) {
+                    if (!may_start_branching(oracle_, *at, run, b, stats_)) {
                         ++stats_.start_rejected;
                         continue;
                     }
@@ -626,7 +696,7 @@ public:
 
         // advance: an AND over what the ending actions observe.
         if (!n.running.empty()) {
-            if (const auto children = advanced(task_, n)) {
+            if (const auto children = advanced(oracle_, n)) {
                 const double dt = children->front().second.t - n.t;
                 const double budget = std::min(bound, best) - dt;
                 double worst = 0.0;
@@ -675,7 +745,7 @@ public:
                 n = started(n, b, d_[b]);
                 continue;
             }
-            const auto children = advanced(task_, n);
+            const auto children = advanced(oracle_, n);
             epoch->advance_to = children->front().second.t;
             for (const auto& [obs, child] : *children)
                 epoch->branches.push_back(Branch{obs, build(child, leaves)});
@@ -748,6 +818,7 @@ private:
     double               max_duration_{0.0};
     std::unordered_map<Key, Memo, KeyHash> memo_;
     mutable std::unordered_map<Key, double, KeyHash> critical_path_;
+    mutable Oracle       oracle_;
 };
 
 } // namespace
@@ -760,7 +831,7 @@ search_policy(const PlanningTask& task, const Durations& durations, const Search
     const auto started_at = std::chrono::steady_clock::now();
     PolicySearch search(task, durations, options, stats);
 
-    BNode root{bisim_contract(task.init), {}, 0.0};
+    BNode root{bisim_contract(task.init), {}, 0.0, std::nullopt};
     std::optional<TemporalPolicy> policy;
     try {
         double bound = search.estimate(root);
@@ -777,7 +848,14 @@ search_policy(const PlanningTask& task, const Durations& durations, const Search
                 stats.exhausted = true;
                 break;
             }
-            bound = r.value;
+            // solve() returns the exact least cost whenever it is within the
+            // bound, so the bound may overshoot: the first one at or above the
+            // optimum returns the optimum itself. Growing it geometrically
+            // takes logarithmically many iterations where stepping to the
+            // next lower bound takes one per distinct reachable makespan,
+            // which heterogeneous durations multiply.
+            bound = std::max(r.value, bound * options.bound_growth);
+            ++stats.iterations;
         }
     } catch (const OutOfTime&) {
     }
@@ -797,6 +875,7 @@ bool validate_policy(const PlanningTask& task, const Durations& durations,
     };
     if (!policy.root) return fail("the policy is empty");
 
+    Oracle oracle(task);
     double worst = 0.0;
     const std::function<bool(const Epoch&, BNode)> check = [&](const Epoch& e, BNode n) -> bool {
         if (ticks(e.t) != ticks(n.t)) return fail("an epoch is at the wrong time");
@@ -808,7 +887,7 @@ bool validate_policy(const PlanningTask& task, const Durations& durations,
             if (!task.actions[step.action].applicable(n.model))
                 return fail(name + " is not applicable at its start");
             n = started(n, step.action, step.duration);
-            if (!coherent_branching(task, n.model, actions_of(n.running)))
+            if (!coherent_branching(oracle, n.model, actions_of(n.running)))
                 return fail("starting " + name + " makes the running set incoherent");
         }
         if (e.branches.empty()) {
@@ -818,7 +897,7 @@ bool validate_policy(const PlanningTask& task, const Durations& durations,
             return true;
         }
         if (n.running.empty()) return fail("an advance with nothing running");
-        const auto children = advanced(task, n);
+        const auto children = advanced(oracle, n);
         if (!children) return fail("an action ending has no outcome");
         if (ticks(children->front().second.t) != ticks(e.advance_to))
             return fail("an advance goes to the wrong time");
@@ -836,7 +915,7 @@ bool validate_policy(const PlanningTask& task, const Durations& durations,
         return true;
     };
 
-    if (!check(*policy.root, BNode{bisim_contract(task.init), {}, 0.0})) return false;
+    if (!check(*policy.root, BNode{bisim_contract(task.init), {}, 0.0, std::nullopt})) return false;
     if (ticks(worst) != ticks(policy.makespan)) return fail("the worst-case makespan is wrong");
     return true;
 }
