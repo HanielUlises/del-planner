@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
             ts = secs(t0); tsym += ts;
             if (run_explicit) {
                 t0 = std::chrono::steady_clock::now();
-                s = bisim_contract(*product_update(s, *a, t.repair_seriality()));
+                s = bisim_contract(*product_update(s, *a, t.seriality()));
                 te = secs(t0); texp += te;
             }
         }
