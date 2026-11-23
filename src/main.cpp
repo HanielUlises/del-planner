@@ -244,8 +244,14 @@ int main(int argc, char* argv[]) {
                   << ", start checks " << stats.start_checks << " (" << stats.start_rejected
                   << " rejected), " << stats.elapsed_sec << " s\n";
         if (!plan) {
-            std::cerr << (stats.exhausted ? "[temporal] no plan exists\n"
-                                          : "[temporal] no plan found within the limits\n");
+            // --temporal plans without branching. A task whose sensing has
+            // several possible outcomes needs a policy, which
+            // temporal::search_policy builds (eplansys calls it); say so
+            // rather than call the task unsolvable.
+            std::cerr << (stats.exhausted
+                ? "[temporal] no linear plan exists; if the task's sensing has several "
+                  "possible outcomes, it needs a branching temporal policy\n"
+                : "[temporal] no plan found within the limits\n");
             return 1;
         }
         nlohmann::json out;
