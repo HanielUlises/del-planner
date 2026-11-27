@@ -111,8 +111,9 @@ static void usage(const char* prog) {
         << "                 eplansys action mapping (default: 1 s each)\n"
         << "  --max-concurrency N\n"
         << "                 Actions running at once under --temporal (default: 3)\n"
-        << "  --symbolic     Hybrid search: explicit states up to --symbolic-threshold\n"
-        << "                 worlds, BDD states above (GBFS; kadd, kff, hd, hdsum, ug)\n"
+        << "  --symbolic     Symbolic search (GBFS; kadd, kff, hd, hdsum, ug): every state\n"
+        << "                 as BDDs when the initial state has >= 1024 worlds, otherwise\n"
+        << "                 BDDs only above --symbolic-threshold injective worlds\n"
         << "  --symbolic-threshold N\n"
         << "                 World count above which states are symbolic (default: 4096;\n"
         << "                 0 = every state symbolic)\n"
@@ -142,6 +143,7 @@ int main(int argc, char* argv[]) {
     bool symbolic_mode = false;
     double symbolic_threshold = 4096;
     double symbolic_hidden = 1 << 20;
+    bool symbolic_fixed = false;   // thresholds given: no per-task choice
     bool kd45_repair  = false;
     bool consistent   = false;
     bool portfolio_on = true;
@@ -181,8 +183,8 @@ int main(int argc, char* argv[]) {
         else if (arg == "--durations" && i+1 < argc) durations_path = argv[++i];
         else if (arg == "--max-concurrency" && i+1 < argc) max_concurrency = std::stoul(argv[++i]);
         else if (arg == "--symbolic")     symbolic_mode     = true;
-        else if (arg == "--symbolic-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_threshold = std::stod(argv[++i]); }
-        else if (arg == "--symbolic-hidden-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_hidden = std::stod(argv[++i]); }
+        else if (arg == "--symbolic-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_fixed = true; symbolic_threshold = std::stod(argv[++i]); }
+        else if (arg == "--symbolic-hidden-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_fixed = true; symbolic_hidden = std::stod(argv[++i]); }
         else if (arg == "--help" || arg == "-h") { usage(argv[0]); return 0; }
         else {
             std::cerr << "Unknown argument: " << arg << "\n";
@@ -225,6 +227,15 @@ int main(int argc, char* argv[]) {
         task = load_task(task_path);
     } catch (const std::exception& e) {
         std::cerr << "Error loading task: " << e.what() << "\n";
+        return 1;
+    }
+
+    // An initial theory with too many valuations is not materialised; only the
+    // symbolic engine can start from it. Planning on the empty model would
+    // satisfy every goal vacuously.
+    if (task.theory && task.init.num_worlds == 0 && !symbolic_mode) {
+        std::cerr << "Error: the initial state is a finitary S5 theory with too many valuations "
+                     "to materialise (ALETHEIA_THEORY_MAX_FREE); use --symbolic\n";
         return 1;
     }
 
@@ -402,6 +413,7 @@ int main(int argc, char* argv[]) {
         so.heuristic = heuristic_label;
         so.threshold = symbolic_threshold;
         so.hidden_threshold = std::max(symbolic_threshold, symbolic_hidden);
+        if (symbolic_fixed) so.full_from = 0;
         so.max_nodes = limit;
         so.deadline  = deadline;
         so.helpful   = helpful_on;

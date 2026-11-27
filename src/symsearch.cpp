@@ -16,6 +16,7 @@
 #include <deque>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -39,6 +40,8 @@ struct Node {
     ActionIdx      action{0};
     std::uint32_t  g{0};
     double         worlds{0};
+    // Swaps known to fix this (symbolic) state, by index; empty = unknown.
+    std::vector<std::uint8_t> fixing;
 };
 
 struct QEntry { float h; std::uint32_t g; std::uint32_t idx; };
@@ -105,6 +108,7 @@ private:
     WorldCapPolicy      cap_;
     AgentSymmetry       sym_;
     bool                use_sym_{false};
+    double              th_{0}, thh_{0};      // thresholds of this run
 
     std::deque<Node>    nodes_;
     std::vector<QEntry> open_;
@@ -112,6 +116,7 @@ private:
     std::unordered_map<Fingerprint, std::vector<std::uint32_t>, FingerprintHash> hidden_by_inv_;
     std::vector<sym::SymState> hidden_;
     SearchResult        res_;
+    std::vector<std::uint8_t> pending_fix_;   // for the next symbolic node created
 
     float hsym(sym::SymState& s);
     bool  dead_sym(sym::SymState& s, float h);
@@ -210,7 +215,7 @@ bool injective(const EpistemicState& e) {
 
 bool Search::explicit_side(const EpistemicState& e) const {
     const double w = double(e.num_worlds);
-    return w <= o_.threshold || (w <= o_.hidden_threshold && !injective(e));
+    return w <= th_ || (w <= thh_ && !injective(e));
 }
 
 bool Search::add(EpistemicState e, std::uint32_t parent, ActionIdx a, std::uint32_t g) {
@@ -230,7 +235,7 @@ bool Search::add(sym::SymState s, std::uint32_t parent, ActionIdx a, std::uint32
         Timer tm{st_.t_identity};
         w = eng_.worlds(s);
     }
-    if (w > o_.threshold && (s.hid.empty() || w > o_.hidden_threshold))
+    if (w > th_ && (s.hid.empty() || w > thh_))
         return add_symbolic(std::move(s), parent, a, g);
     ++st_.to_explicit;
     EpistemicState e;
@@ -313,6 +318,8 @@ bool Search::add_symbolic(sym::SymState s, std::uint32_t parent, ActionIdx a, st
     if (dead_sym(s, hv)) { res_.stats.record_prune(PruneReason::DeadEnd); return false; }
     s.memo.clear();
     Node n{true, true, {}, std::move(s), parent, a, g, w};
+    n.fixing = std::move(pending_fix_);
+    pending_fix_.clear();
     push(std::move(n), hv);
     return false;
 }
@@ -327,6 +334,9 @@ std::vector<std::string> Search::plan(std::uint32_t leaf) const {
 
 void Search::finish() {
     const auto& es = eng_.stats;
+    std::cerr << "[symsearch] swaps inherited " << st_.symmetric_inherited << ", tested " << st_.symmetric_tests << " (H != 0: same BDDs " << es.fixes_same << ", hidden relabelling " << es.fixes_relabel
+              << ", invariant differs " << es.fixes_invariant << ", bisimilar " << es.fixes_equivalent
+              << ", not bisimilar " << es.fixes_rejected << ")\n";
     st_.contractions = es.contractions;
     st_.fixpoint_skipped = es.fixpoint_skipped;
     st_.fixpoint_runs = es.fixpoint_runs;
@@ -372,9 +382,18 @@ std::optional<SearchResult> Search::run(bool helpful, bool& pruned, bool root_ch
         return r && *r == hdelta::kInf;
     };
 
+    th_ = o_.threshold;
+    thh_ = std::max(o_.threshold, o_.hidden_threshold);
+    if (o_.full_from > 0) {
+        const double w0 = from_theory ? o_.full_from : double(bisim_contract(t_.init).num_worlds);
+        if (w0 >= o_.full_from) { th_ = thh_ = 0; st_.full_symbolic = true; }
+    }
+    if (st_.full_symbolic)
+        std::cerr << "[symsearch] initial state has at least " << o_.full_from << " worlds: every state symbolic\n";
+
     bool goal = false;
-    if (from_theory || (double(t_.init.num_worlds) > o_.threshold &&
-                        (double(t_.init.num_worlds) > o_.hidden_threshold || injective(bisim_contract(t_.init))))) {
+    if (from_theory || (double(t_.init.num_worlds) > th_ &&
+                        (double(t_.init.num_worlds) > thh_ || injective(bisim_contract(t_.init))))) {
         sym::SymState s0 = eng_.contract(t_.theory ? eng_.from_theory(*t_.theory) : eng_.from_explicit(t_.init));
         std::cerr << "[symsearch] initial state: " << eng_.worlds(s0) << " worlds (symbolic, "
                   << eng_.nodes(s0) << " BDD nodes)\n";
@@ -494,10 +513,26 @@ std::optional<SearchResult> Search::run(bool helpful, bool& pruned, bool root_ch
             nodes_[ci].sy = sym::SymState{};
             nodes_[ci].live = false;
             StateSymmetry stab;
+            // Swaps proved to fix P. A swap that fixes P and maps action a to
+            // itself fixes P ⊗ a (renaming commutes with product update, which
+            // preserves bisimilarity), so successors inherit them untested.
+            std::vector<std::uint8_t> fixed;
             if (use_sym_) {
                 Timer tm{st_.t_symmetry};
+                const std::vector<std::uint8_t> known = std::move(nodes_[ci].fixing);
+                nodes_[ci].fixing.clear();
+                fixed.assign(sym_.swaps.size(), 0);
+                std::optional<sym::Engine::SwapFilter> filter;
                 stab = stabiliser_by(sym_, static_cast<std::uint32_t>(t_.num_agents()),
-                                     [&](const AgentSymmetry::Swap& sw) { ++st_.symmetric_tests; return eng_.fixes(P, sw); });
+                                     [&](const AgentSymmetry::Swap& sw) {
+                                         const std::size_t k = std::size_t(&sw - sym_.swaps.data());
+                                         if (!filter) filter = eng_.swap_filter(P);
+                                         if (!filter->admits(sw)) return false;
+                                         ++st_.symmetric_tests;
+                                         return bool(fixed[k] = eng_.fixes(P, sw));
+                                     }, known.empty() ? nullptr : &known);
+                for (std::size_t k = 0; k < known.size(); ++k)
+                    if (known[k]) { fixed[k] = 1; ++st_.symmetric_inherited; }
             }
             cands.clear();
             for (ActionIdx ai = 0; ai < t_.actions.size(); ++ai)
@@ -518,6 +553,11 @@ std::optional<SearchResult> Search::run(bool helpful, bool& pruned, bool root_ch
                     ok = eng_.applicable(P, act);
                 }
                 if (!ok) continue;
+                if (use_sym_) {
+                    pending_fix_.assign(sym_.swaps.size(), 0);
+                    for (std::size_t k = 0; k < sym_.swaps.size(); ++k)
+                        pending_fix_[k] = fixed[k] && sym_.swaps[k].action[ai] == ai;
+                }
                 sym::SymState u;
                 {
                     Timer tm{st_.t_update};
@@ -528,7 +568,9 @@ std::optional<SearchResult> Search::run(bool helpful, bool& pruned, bool root_ch
                     u = eng_.contract(u);
                 }
                 any = true;
-                if (add(std::move(u), ci, ai, g)) {
+                const bool hit = add(std::move(u), ci, ai, g);
+                pending_fix_.clear();
+                if (hit) {
                     res_.plan = plan(static_cast<std::uint32_t>(nodes_.size() - 1));
                     finish();
                     return res_;
