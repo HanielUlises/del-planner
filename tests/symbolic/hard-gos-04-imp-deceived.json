@@ -1,0 +1,1478 @@
+{
+  "planning-task-info": {
+    "problem": "gos-4-imp-deceived",
+    "domain": "gossip",
+    "libraries": [
+      "hard"
+    ],
+    "requirements": [
+      ":KD45-frames",
+      ":common-knowledge",
+      ":disjunctive-goals",
+      ":disjunctive-list-formulas",
+      ":disjunctive-preconditions",
+      ":equality",
+      ":events-conditions",
+      ":existential-preconditions",
+      ":facts",
+      ":finitary-S5-theories",
+      ":general-preconditions",
+      ":group-modalities",
+      ":knowing-whether",
+      ":list-comprehensions",
+      ":lists",
+      ":modal-goals",
+      ":modal-preconditions",
+      ":multi-pointed-models",
+      ":negative-goals",
+      ":negative-list-formulas",
+      ":negative-preconditions",
+      ":ontic-actions",
+      ":partial-observability",
+      ":quantified-preconditions",
+      ":static-common-knowledge",
+      ":typing",
+      ":universal-goals",
+      ":universal-preconditions"
+    ],
+    "agents-number": 4,
+    "atoms-number": 5,
+    "facts-number": 0,
+    "actions-number": 11,
+    "initial-worlds-number": 8,
+    "goal-modal-depth": 2,
+    "goal-size": 22
+  },
+  "language": {
+    "atoms": [
+      "is-spying_A",
+      "is-spying_B",
+      "secret_A",
+      "secret_B",
+      "secret_Impostor"
+    ],
+    "agents": [
+      "A",
+      "B",
+      "Detective",
+      "Impostor"
+    ]
+  },
+  "facts": [],
+  "initial-state": {
+    "worlds": [
+      "w0",
+      "w1",
+      "w2",
+      "w3",
+      "w4",
+      "w5",
+      "w6",
+      "w7"
+    ],
+    "relations": {
+      "A": {
+        "w0": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w1": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w2": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w3": [
+          "w0",
+          "w1",
+          "w2",
+          "w3"
+        ],
+        "w4": [
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w5": [
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w6": [
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w7": [
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ]
+      },
+      "B": {
+        "w0": [
+          "w0",
+          "w1",
+          "w4",
+          "w5"
+        ],
+        "w1": [
+          "w0",
+          "w1",
+          "w4",
+          "w5"
+        ],
+        "w2": [
+          "w2",
+          "w3",
+          "w6",
+          "w7"
+        ],
+        "w3": [
+          "w2",
+          "w3",
+          "w6",
+          "w7"
+        ],
+        "w4": [
+          "w0",
+          "w1",
+          "w4",
+          "w5"
+        ],
+        "w5": [
+          "w0",
+          "w1",
+          "w4",
+          "w5"
+        ],
+        "w6": [
+          "w2",
+          "w3",
+          "w6",
+          "w7"
+        ],
+        "w7": [
+          "w2",
+          "w3",
+          "w6",
+          "w7"
+        ]
+      },
+      "Detective": {
+        "w0": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w1": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w2": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w3": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w4": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w5": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w6": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ],
+        "w7": [
+          "w0",
+          "w1",
+          "w2",
+          "w3",
+          "w4",
+          "w5",
+          "w6",
+          "w7"
+        ]
+      },
+      "Impostor": {
+        "w0": [
+          "w0",
+          "w2",
+          "w4",
+          "w6"
+        ],
+        "w1": [
+          "w1",
+          "w3",
+          "w5",
+          "w7"
+        ],
+        "w2": [
+          "w0",
+          "w2",
+          "w4",
+          "w6"
+        ],
+        "w3": [
+          "w1",
+          "w3",
+          "w5",
+          "w7"
+        ],
+        "w4": [
+          "w0",
+          "w2",
+          "w4",
+          "w6"
+        ],
+        "w5": [
+          "w1",
+          "w3",
+          "w5",
+          "w7"
+        ],
+        "w6": [
+          "w0",
+          "w2",
+          "w4",
+          "w6"
+        ],
+        "w7": [
+          "w1",
+          "w3",
+          "w5",
+          "w7"
+        ]
+      }
+    },
+    "labels": {
+      "w0": [],
+      "w1": [
+        "secret_Impostor"
+      ],
+      "w2": [
+        "secret_B"
+      ],
+      "w3": [
+        "secret_B",
+        "secret_Impostor"
+      ],
+      "w4": [
+        "secret_A"
+      ],
+      "w5": [
+        "secret_A",
+        "secret_Impostor"
+      ],
+      "w6": [
+        "secret_A",
+        "secret_B"
+      ],
+      "w7": [
+        "secret_A",
+        "secret_B",
+        "secret_Impostor"
+      ]
+    },
+    "designated": [
+      "w7"
+    ]
+  },
+  "actions": {
+    "tell_A_B": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-tell",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-tell": [
+            "e-tell"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-tell": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-tell"
+      ],
+      "preconditions": {
+        "e-tell": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_A",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "B"
+                ],
+                "formula": "secret_A"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-tell": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "tell_A_Detective": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-tell",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-tell": [
+            "e-tell"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-tell": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-tell"
+      ],
+      "preconditions": {
+        "e-tell": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_A",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "Detective"
+                ],
+                "formula": "secret_A"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-tell": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "tell_A_Impostor": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-tell",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-tell": [
+            "e-tell"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-tell": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-tell"
+      ],
+      "preconditions": {
+        "e-tell": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_A",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "Impostor"
+                ],
+                "formula": "secret_A"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-tell": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "tell_B_A": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-tell",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-tell": [
+            "e-tell"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-tell": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-tell"
+      ],
+      "preconditions": {
+        "e-tell": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_B",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "A"
+                ],
+                "formula": "secret_B"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-tell": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "tell_B_Detective": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-tell",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-tell": [
+            "e-tell"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-tell": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-tell"
+      ],
+      "preconditions": {
+        "e-tell": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_B",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "Detective"
+                ],
+                "formula": "secret_B"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-tell": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "tell_B_Impostor": {
+      "action-type": "private-announcement",
+      "events": [
+        "e-tell",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-tell": [
+            "e-tell"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-tell": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-tell"
+      ],
+      "preconditions": {
+        "e-tell": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_B",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "Impostor"
+                ],
+                "formula": "secret_B"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-tell": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "lie_Impostor_A": {
+      "action-type": "private-deception",
+      "events": [
+        "e-lie-actual",
+        "e-lie-deceive",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-lie-actual": [
+            "e-lie-actual"
+          ],
+          "e-lie-deceive": [
+            "e-lie-deceive"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Deceived": {
+          "e-lie-actual": [
+            "e-lie-deceive"
+          ],
+          "e-lie-deceive": [
+            "e-lie-deceive"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-lie-actual": [
+            "nil"
+          ],
+          "e-lie-deceive": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-lie-actual"
+      ],
+      "preconditions": {
+        "e-lie-actual": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_Impostor",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "A"
+                ],
+                "formula": "secret_Impostor"
+              }
+            ]
+          }
+        },
+        "e-lie-deceive": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              {
+                "connective": "not",
+                "formula": "secret_Impostor"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "A"
+                ],
+                "formula": "secret_Impostor"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-lie-actual": null,
+        "e-lie-deceive": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Deceived": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "lie_Impostor_B": {
+      "action-type": "private-deception",
+      "events": [
+        "e-lie-actual",
+        "e-lie-deceive",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-lie-actual": [
+            "e-lie-actual"
+          ],
+          "e-lie-deceive": [
+            "e-lie-deceive"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Deceived": {
+          "e-lie-actual": [
+            "e-lie-deceive"
+          ],
+          "e-lie-deceive": [
+            "e-lie-deceive"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-lie-actual": [
+            "nil"
+          ],
+          "e-lie-deceive": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-lie-actual"
+      ],
+      "preconditions": {
+        "e-lie-actual": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_Impostor",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "B"
+                ],
+                "formula": "secret_Impostor"
+              }
+            ]
+          }
+        },
+        "e-lie-deceive": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              {
+                "connective": "not",
+                "formula": "secret_Impostor"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "B"
+                ],
+                "formula": "secret_Impostor"
+              }
+            ]
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-lie-actual": null,
+        "e-lie-deceive": null,
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Deceived": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Fully": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "give-earpiece_Detective_A": {
+      "action-type": "private-ontic",
+      "events": [
+        "e-give-earpiece",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-give-earpiece": [
+            "e-give-earpiece"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-give-earpiece": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-give-earpiece"
+      ],
+      "preconditions": {
+        "e-give-earpiece": {
+          "formula": {
+            "connective": "not",
+            "formula": "is-spying_A"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-give-earpiece": {
+          "is-spying_A": {
+            "formula": {
+              "connective": "or",
+              "formulas": [
+                "true",
+                {
+                  "connective": "and",
+                  "formulas": [
+                    "is-spying_A",
+                    {
+                      "connective": "not",
+                      "formula": "false"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "B": {
+          "Fully": {
+            "formula": "is-spying_B"
+          },
+          "Oblivious": {
+            "formula": {
+              "connective": "not",
+              "formula": "is-spying_B"
+            }
+          }
+        },
+        "Detective": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "give-earpiece_Detective_B": {
+      "action-type": "private-ontic",
+      "events": [
+        "e-give-earpiece",
+        "nil"
+      ],
+      "relations": {
+        "Fully": {
+          "e-give-earpiece": [
+            "e-give-earpiece"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-give-earpiece": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-give-earpiece"
+      ],
+      "preconditions": {
+        "e-give-earpiece": {
+          "formula": {
+            "connective": "not",
+            "formula": "is-spying_B"
+          }
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-give-earpiece": {
+          "is-spying_B": {
+            "formula": {
+              "connective": "or",
+              "formulas": [
+                "true",
+                {
+                  "connective": "and",
+                  "formulas": [
+                    "is-spying_B",
+                    {
+                      "connective": "not",
+                      "formula": "false"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Fully": {
+            "formula": "is-spying_A"
+          },
+          "Oblivious": {
+            "formula": {
+              "connective": "not",
+              "formula": "is-spying_A"
+            }
+          }
+        },
+        "B": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Detective": {
+          "Fully": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "Oblivious": {
+            "formula": "true"
+          }
+        }
+      }
+    },
+    "catch_Detective_Impostor": {
+      "action-type": "private-2x-deception",
+      "events": [
+        "e-catch-actual",
+        "e-catch-true-deceive",
+        "e-catch-false-deceive",
+        "e-catch-spy",
+        "nil"
+      ],
+      "relations": {
+        "FalselyDeceived": {
+          "e-catch-actual": [
+            "e-catch-actual"
+          ],
+          "e-catch-true-deceive": [
+            "e-catch-false-deceive"
+          ],
+          "e-catch-false-deceive": [
+            "e-catch-false-deceive"
+          ],
+          "e-catch-spy": [
+            "e-catch-actual"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "TrulyDeceived": {
+          "e-catch-actual": [
+            "e-catch-true-deceive"
+          ],
+          "e-catch-true-deceive": [
+            "e-catch-true-deceive"
+          ],
+          "e-catch-false-deceive": [
+            "e-catch-false-deceive"
+          ],
+          "e-catch-spy": [
+            "e-catch-true-deceive"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Spying": {
+          "e-catch-actual": [
+            "e-catch-spy"
+          ],
+          "e-catch-true-deceive": [
+            "nil"
+          ],
+          "e-catch-false-deceive": [
+            "nil"
+          ],
+          "e-catch-spy": [
+            "e-catch-spy"
+          ],
+          "nil": [
+            "nil"
+          ]
+        },
+        "Oblivious": {
+          "e-catch-actual": [
+            "nil"
+          ],
+          "e-catch-true-deceive": [
+            "nil"
+          ],
+          "e-catch-false-deceive": [
+            "nil"
+          ],
+          "e-catch-spy": [
+            "nil"
+          ],
+          "nil": [
+            "nil"
+          ]
+        }
+      },
+      "designated": [
+        "e-catch-actual"
+      ],
+      "preconditions": {
+        "e-catch-actual": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_Impostor",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "Detective"
+                ],
+                "formula": "secret_Impostor"
+              }
+            ]
+          }
+        },
+        "e-catch-true-deceive": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              "secret_Impostor",
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "Detective"
+                ],
+                "formula": "secret_Impostor"
+              }
+            ]
+          }
+        },
+        "e-catch-false-deceive": {
+          "formula": {
+            "connective": "and",
+            "formulas": [
+              {
+                "connective": "not",
+                "formula": "secret_Impostor"
+              },
+              {
+                "modality-name": "Kw.diamond",
+                "modality-index": [
+                  "Detective"
+                ],
+                "formula": "secret_Impostor"
+              }
+            ]
+          }
+        },
+        "e-catch-spy": {
+          "formula": "true"
+        },
+        "nil": {
+          "formula": "true"
+        }
+      },
+      "effects": {
+        "e-catch-actual": null,
+        "e-catch-true-deceive": null,
+        "e-catch-false-deceive": null,
+        "e-catch-spy": {
+          "secret_Impostor": {
+            "formula": {
+              "connective": "or",
+              "formulas": [
+                "true",
+                {
+                  "connective": "and",
+                  "formulas": [
+                    "secret_Impostor",
+                    {
+                      "connective": "not",
+                      "formula": "false"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "nil": null
+      },
+      "observability-conditions": {
+        "A": {
+          "Spying": {
+            "formula": "is-spying_A"
+          },
+          "Oblivious": {
+            "formula": {
+              "connective": "not",
+              "formula": "is-spying_A"
+            }
+          }
+        },
+        "B": {
+          "Spying": {
+            "formula": "is-spying_B"
+          },
+          "Oblivious": {
+            "formula": {
+              "connective": "not",
+              "formula": "is-spying_B"
+            }
+          }
+        },
+        "Detective": {
+          "FalselyDeceived": {
+            "formula": "true"
+          }
+        },
+        "Impostor": {
+          "TrulyDeceived": {
+            "formula": "true"
+          }
+        }
+      }
+    }
+  },
+  "goal": {
+    "formula": {
+      "connective": "and",
+      "formulas": [
+        {
+          "connective": "and",
+          "formulas": [
+            {
+              "modality-name": "box",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_Impostor"
+            },
+            {
+              "modality-name": "box",
+              "modality-index": [
+                "Impostor"
+              ],
+              "formula": {
+                "modality-name": "box",
+                "modality-index": [
+                  "A"
+                ],
+                "formula": {
+                  "connective": "not",
+                  "formula": "secret_Impostor"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "connective": "and",
+          "formulas": [
+            {
+              "modality-name": "box",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_Impostor"
+            },
+            {
+              "modality-name": "box",
+              "modality-index": [
+                "Impostor"
+              ],
+              "formula": {
+                "modality-name": "box",
+                "modality-index": [
+                  "B"
+                ],
+                "formula": {
+                  "connective": "not",
+                  "formula": "secret_Impostor"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "connective": "and",
+          "formulas": [
+            {
+              "modality-name": "box",
+              "modality-index": [
+                "Detective"
+              ],
+              "formula": "secret_Impostor"
+            },
+            {
+              "modality-name": "box",
+              "modality-index": [
+                "Impostor"
+              ],
+              "formula": {
+                "modality-name": "box",
+                "modality-index": [
+                  "Detective"
+                ],
+                "formula": {
+                  "connective": "not",
+                  "formula": "secret_Impostor"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

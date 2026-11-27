@@ -12,6 +12,7 @@
 #include "signature.hpp"
 #include "strategy.hpp"
 #include "symmetry.hpp"
+#include "symsearch.hpp"
 #include "temporal_search.hpp"
 
 #include <nlohmann/json.hpp>
@@ -22,6 +23,8 @@
 #include <stdexcept>
 #include <memory>
 #include <chrono>
+#include <cmath>
+#include <cstdlib>
 #include <algorithm>
 #include <optional>
 
@@ -108,6 +111,14 @@ static void usage(const char* prog) {
         << "                 eplansys action mapping (default: 1 s each)\n"
         << "  --max-concurrency N\n"
         << "                 Actions running at once under --temporal (default: 3)\n"
+        << "  --symbolic     Hybrid search: explicit states up to --symbolic-threshold\n"
+        << "                 worlds, BDD states above (GBFS; kadd, kff, hd, hdsum, ug)\n"
+        << "  --symbolic-threshold N\n"
+        << "                 World count above which states are symbolic (default: 4096;\n"
+        << "                 0 = every state symbolic)\n"
+        << "  --symbolic-hidden-threshold N\n"
+        << "                 The same for states that are not valuation-injective\n"
+        << "                 (default: 1048576)\n"
         << "  --help         Show this message\n";
 }
 
@@ -128,6 +139,9 @@ int main(int argc, char* argv[]) {
     bool print_policy = false;
     bool explain      = false;
     bool symmetry     = true;
+    bool symbolic_mode = false;
+    double symbolic_threshold = 4096;
+    double symbolic_hidden = 1 << 20;
     bool kd45_repair  = false;
     bool consistent   = false;
     bool portfolio_on = true;
@@ -166,6 +180,9 @@ int main(int argc, char* argv[]) {
         else if (arg == "--temporal")     temporal_mode     = true;
         else if (arg == "--durations" && i+1 < argc) durations_path = argv[++i];
         else if (arg == "--max-concurrency" && i+1 < argc) max_concurrency = std::stoul(argv[++i]);
+        else if (arg == "--symbolic")     symbolic_mode     = true;
+        else if (arg == "--symbolic-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_threshold = std::stod(argv[++i]); }
+        else if (arg == "--symbolic-hidden-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_hidden = std::stod(argv[++i]); }
         else if (arg == "--help" || arg == "-h") { usage(argv[0]); return 0; }
         else {
             std::cerr << "Unknown argument: " << arg << "\n";
@@ -197,6 +214,13 @@ int main(int argc, char* argv[]) {
     }
 
     PlanningTask task;
+    // Under --symbolic an initial theory is materialised only when it is small
+    // enough to start explicit; larger ones start from the theory on BDDs.
+    if (symbolic_mode && !std::getenv("ALETHEIA_THEORY_MAX_FREE")) {
+        unsigned free_bits = 0;
+        while (free_bits < 24 && std::ldexp(1.0, int(free_bits) + 1) <= symbolic_threshold) ++free_bits;
+        setenv("ALETHEIA_THEORY_MAX_FREE", std::to_string(free_bits).c_str(), 1);
+    }
     try {
         task = load_task(task_path);
     } catch (const std::exception& e) {
@@ -362,6 +386,63 @@ int main(int argc, char* argv[]) {
     else if (dead_ends == "suspect") task.dead_end_check = DeadEndCheck::Suspect;
     else if (dead_ends == "all")     task.dead_end_check = DeadEndCheck::All;
     else { std::cerr << "Error: --dead-ends expects off, root, suspect or all\n"; return 1; }
+    if (symbolic_mode) {
+        // Hybrid explicit/symbolic GBFS (symsearch.hpp); does its own root test,
+        // since the initial state may exist only as a finitary S5 theory.
+        if (!symsearch::supports(heuristic_label)) {
+            std::cerr << "Error: --symbolic supports the heuristics kadd, kff, hd, hdsum and ug, not '"
+                      << heuristic_label << "'\n";
+            return 1;
+        }
+        if (strategy != Strategy::GBFS)
+            std::cerr << "[main] --symbolic plans linearly with GBFS; ignoring strategy "
+                      << strategy_name(strategy) << "\n";
+        std::cerr << "[main] Mode: hybrid GBFS (symbolic above " << symbolic_threshold << " worlds)\n";
+        symsearch::Options so;
+        so.heuristic = heuristic_label;
+        so.threshold = symbolic_threshold;
+        so.hidden_threshold = std::max(symbolic_threshold, symbolic_hidden);
+        so.max_nodes = limit;
+        so.deadline  = deadline;
+        so.helpful   = helpful_on;
+        symsearch::Stats ss;
+        std::optional<SearchResult> result;
+        try {
+            result = symsearch::search(task, *h, so, &ss);
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << "\n";
+            return 1;
+        }
+        const auto& rs = result ? result->stats : PlannerStats{};
+        std::cerr << "[symsearch] explicit nodes " << ss.explicit_generated
+                  << ", symbolic nodes " << ss.symbolic_generated
+                  << " (expanded " << ss.symbolic_expanded << ", H != 0: " << ss.hidden_generated
+                  << "), conversions " << ss.to_symbolic << " up / " << ss.to_explicit << " down\n"
+                  << "[symsearch] duplicates with H != 0: " << ss.hidden_same_encoding
+                  << " same encoding, " << ss.hidden_bisimilar << " by bisimilarity ("
+                  << ss.hidden_checks << " checks, " << ss.hidden_closed << " kept)\n"
+                  << "[symsearch] contractions " << ss.contractions << " (fixpoint skipped "
+                  << ss.fixpoint_skipped << ", run " << ss.fixpoint_runs << ", "
+                  << ss.fixpoint_rounds << " rounds); gc " << ss.gc_runs
+                  << "; peak BDD nodes " << ss.peak_bdd_nodes << " (" << ss.peak_bdd_bytes / (1 << 20)
+                  << " MiB); max worlds " << ss.max_worlds << "\n"
+                  << "[symsearch] time: update " << ss.t_update << " s, contract " << ss.t_contract
+                  << " s, heuristic " << ss.t_heuristic << " s, identity " << ss.t_identity
+                  << " s, convert " << ss.t_convert << " s, goal/applicable " << ss.t_goal
+                  << " s, symmetry " << ss.t_symmetry << " s, helpful " << ss.t_preferred << " s\n";
+        if (!result) {
+            out << "null\n";
+            std::cerr << "[main] No solution found.\n";
+            return 0;
+        }
+        std::cerr << "[symsearch] Solution found. Length=" << result->plan.size()
+                  << "  Expanded=" << rs.nodes_expanded << "  Generated=" << rs.nodes_generated
+                  << "  Time=" << rs.elapsed_sec << " s\n";
+        write_linear_plan(out, *result);
+        std::cerr << "[main] Plan written to " << plan_path << "\n";
+        return 0;
+    }
+
     if (task.dead_end_check != DeadEndCheck::Off) {
         const auto budget = timeout_secs > 0 ? std::chrono::milliseconds(timeout_secs * 100)
                                              : std::chrono::milliseconds(30'000);

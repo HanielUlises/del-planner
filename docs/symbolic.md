@@ -156,12 +156,97 @@ goal; plank's validator accepts the plan for n = 10 and gives no verdict for
 n = 12 within 900 s (it grounds, then validates on the explicit model), so
 beyond n = 10 the theorem and the differential test are the evidence.
 
-## Next steps (in order)
+## Search on symbolic states (2026-11-26)
 
-1. Contraction speed: skip the E fixpoint when the update provably preserves
-   valuation-injectivity; complement edges; better cache; GC (needed for search).
-2. Search integration: hybrid nodes (explicit below a world threshold, symbolic
-   above; conversions exist in both directions), duplicate detection as above,
-   symmetry Γ_s by variable renaming + node equality when H = ∅.
-3. Heuristics: kadd's "holds at some designated world" is ∃-quantification;
-   h^Δ's possibility pairs need a symbolic formulation.
+Code: `include/symsearch.hpp`, `src/symsearch.cpp` (hybrid GBFS),
+`include/symheur.hpp`, `src/symheur.cpp` (heuristics on BDDs), additions to
+`include/bdd.hpp` and `src/symdel.cpp`; flag `--symbolic` (docs/usage.md);
+tests `tests/symbolic/symbolic_test.cpp` (CMake `-DALETHEIA_TESTS=ON`, target
+`symbolic_test`).
+
+### Engine changes
+
+- **Garbage collection.** `Manager::gc(roots)` is a non-moving mark-and-sweep:
+  unreachable nodes go to a free list that `mk` reuses, so a Ref the caller
+  keeps as a root stays valid. The unique table is rehashed and the computed
+  cache cleared. The search collects between expansions once the nodes
+  created since the last collection outnumber those it kept; roots are the
+  open symbolic nodes and the H ≠ ∅ states kept for duplicate checks.
+- **Cache.** The computed cache starts at 2^16 entries and grows with the
+  unique table up to 2^23 (it was a fixed 2^22, 80 MB per manager). The engine
+  also keeps `[i]φ` across states, keyed by (Ω_i, ext(φ), θ): a successor
+  shares most relations with its parent, so most modal subformulas are
+  lookups (goal tests and kadd's fact flags 2–4× faster on gossip).
+- **Skipping the fixpoint.** Contraction now projects away the hidden slots
+  that the other variables determine *before* the bisimulation fixpoint. A
+  slot survives only if two worlds differ in it alone, so H = ∅ afterwards iff
+  the model is valuation-injective. Bisimilar worlds share their valuation,
+  so then the quotient is the model itself and the fixpoint is skipped. This
+  is a test on the state, not on the action, and it subsumes "the update
+  provably preserves valuation-injectivity" (public announcements, gossip
+  calls, sensing of observed atoms: Theorem obs-closure of the notes).
+- **Fixpoint renamings.** E is symmetric, so E(u,x) = E(x,u) is an
+  order-preserving relabelling, and x ↔ y transposition is `swap_adjacent`,
+  one linear pass (copies are interleaved per variable). Neither changed
+  the fixpoint's time measurably. On intermediate gos-11-all the replay is
+  9.2 s symbolic vs 1.2 s explicit (20.7 s before), 92% of it in the fixpoint's
+  relational products. Computing the transposed condition directly, with two
+  more products per agent, was slower (11.1 s) and was reverted.
+- **Not done: complement edges.** Operation counts on that replay: negation is
+  10% of recursive calls (relational products 22%, renamings 50%), so
+  constant-time negation would not change the picture. What would is a
+  different fixpoint (signature-based partition refinement over block
+  variables, as in symbolic bisimulation minimisation) instead of a relation
+  over two copies.
+
+### Identity of states
+
+- H = ∅: (θ, δ, Ω_i) is canonical (any bisimulation between two
+  valuation-injective, δ-reachable models is the identity on valuations,
+  the argument of Theorem obs-canonical without the observational
+  restriction on relations). Duplicate detection is a 128-bit structural
+  digest of the four BDDs, computed bottom-up over nodes, so closed states
+  need not stay alive.
+- H ≠ ∅: equal digests still mean equal states (same encoding). Otherwise
+  candidates are bucketed by an invariant: digests of ∃H.θ, ∃H.δ, ∃H.Ω_i and
+  counts (worlds, designated worlds, edges per agent, worlds per atom). Within
+  a bucket the test is exact: the maximal bisimulation of the disjoint union
+  (a tag slot, the same fixpoint as contraction) must match every world of
+  each side. Projections alone put all 42 successors of intermediate
+  gos-07's first expansion into one bucket (861 checks); with counts no check
+  ran on that task.
+- Symmetry: a swap fixes a state with H = ∅ iff the renamed BDDs are the same
+  nodes; with H ≠ ∅, iff the renamed state has the same invariant and is
+  bisimilar. With both, the symbolic search generates exactly what the
+  explicit one does (intermediate gos-07: 207 successors; without the H ≠ ∅
+  test 862).
+
+### Hybrid representation
+
+A contracted state is symbolic iff it has more than T worlds (default 4 096)
+and is valuation-injective, or more than T_H worlds (default 2^20). Both are
+bisimulation invariants, so one state always lands on the same side and
+duplicate detection never compares across representations. Crossing over:
+explicit → symbolic by encoding the contracted model (balanced disjunction of
+world cubes); symbolic → explicit by enumerating θ, one enumeration per
+distinct successor-set BDD, then `bisim_contract` for the canonical numbering
+(26 s → 0.035 s for the two conversions on gos-13-all compared with the
+first version). The second condition exists because H ≠ ∅ states are where the
+symbolic engine is slow (intermediate gos-09 with T alone: > 300 s, against
+1 s explicit).
+
+### Heuristics
+
+- kadd/kff read a state only through "fact φ holds at some designated world",
+  δ ∧ sat(φ) ≠ ⊥. `KnowledgeRelaxationHeuristic::estimate(flags)` takes those
+  flags from either representation, so values are equal on both (tested on
+  502 states).
+- h^Δ on BDDs: possibility sets T, F over x; the possible cuts of agent i as
+  one relation, cut_i(x,y) = Ω_i ∧ ⋁_{a,e} genT_e(x) ∧ ⋁_t ⋀_{f∈Q_t(e)}
+  genF_f(y); boxes and C_G as relational products; the layer update of
+  `hdelta.cpp` otherwise unchanged. Refinements R1–R4 are omitted. Each one
+  only removes possible cuts or eliminations, so the symbolic sets are
+  supersets: symbolic h^Δ ≤ explicit h^Δ, still admissible, and ∞ still a
+  proof. Measured equal on all 161 test states. It is the root dead-end test
+  for symbolic roots (gos-13-all: explicit root test 13 s, symbolic < 0.1 s).
+

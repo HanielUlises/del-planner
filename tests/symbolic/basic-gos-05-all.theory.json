@@ -1,0 +1,2084 @@
+{
+"planning-task-info": {
+  "problem": "gos-5-all",
+  "domain": "gossip",
+  "libraries": [
+    "basic"
+  ],
+  "requirements": [
+    ":common-knowledge",
+    ":disjunctive-preconditions",
+    ":equality",
+    ":events-conditions",
+    ":existential-preconditions",
+    ":finitary-S5-theories",
+    ":general-preconditions",
+    ":group-modalities",
+    ":knowing-whether",
+    ":list-comprehensions",
+    ":lists",
+    ":modal-goals",
+    ":modal-preconditions",
+    ":multi-pointed-models",
+    ":negative-preconditions",
+    ":partial-observability",
+    ":quantified-preconditions",
+    ":static-common-knowledge",
+    ":universal-goals",
+    ":universal-preconditions"
+  ],
+  "agents-number": 5,
+  "atoms-number": 5,
+  "facts-number": 0,
+  "actions-number": 20,
+  "initial-state-format": "finitary-s5-theory",
+  "goal-modal-depth": 1,
+  "goal-size": 11
+},
+"language": {
+  "atoms": [
+    "secret_A",
+    "secret_B",
+    "secret_C",
+    "secret_D",
+    "secret_E"
+  ],
+  "agents": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E"
+  ]
+},
+"facts": [],
+"initial-theory": {
+  "type-1": [
+    {
+      "formula": {
+        "connective": "and",
+        "formulas": [
+          "secret_A",
+          "secret_B",
+          "secret_C",
+          "secret_D",
+          "secret_E"
+        ]
+      }
+    }
+  ],
+  "type-2": [],
+  "type-3": {
+    "A": [
+      {
+        "formula": "secret_A"
+      }
+    ],
+    "B": [
+      {
+        "formula": "secret_B"
+      }
+    ],
+    "C": [
+      {
+        "formula": "secret_C"
+      }
+    ],
+    "D": [
+      {
+        "formula": "secret_D"
+      }
+    ],
+    "E": [
+      {
+        "formula": "secret_E"
+      }
+    ]
+  },
+  "fixed": {}
+},
+"actions": {
+  "tell_A_B": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_A",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_A"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_A_C": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_A",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_A"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_A_D": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_A",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_A"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_A_E": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_A",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_A"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_A"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_B_A": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_B",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_B"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_B_C": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_B",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_B"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_B_D": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_B",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_B"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_B_E": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_B",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_B"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_B"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_C_A": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_C",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_C"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_C_B": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_C",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_C"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_C_D": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_C",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_C"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_C_E": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_C",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_C"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_C"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_D_A": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_D",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_D"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_D_B": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_D",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_D"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_D_C": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_D",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_D"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Partially": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_D_E": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_D",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_D"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "E"
+              ],
+              "formula": "secret_D"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_E_A": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_E",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_E"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "A"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_E_B": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_E",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_E"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "B"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_E_C": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_E",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_E"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "C"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  },
+  "tell_E_D": {
+    "action-type": "semi-private-announcement",
+    "events": [
+      "e-tell-pos",
+      "e-tell-neg"
+    ],
+    "relations": {
+      "Fully": {
+        "e-tell-pos": [
+          "e-tell-pos"
+        ],
+        "e-tell-neg": [
+          "e-tell-neg"
+        ]
+      },
+      "Partially": {
+        "e-tell-pos": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ],
+        "e-tell-neg": [
+          "e-tell-pos",
+          "e-tell-neg"
+        ]
+      }
+    },
+    "designated": [
+      "e-tell-pos"
+    ],
+    "preconditions": {
+      "e-tell-pos": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            "secret_E",
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      },
+      "e-tell-neg": {
+        "formula": {
+          "connective": "and",
+          "formulas": [
+            {
+              "connective": "not",
+              "formula": "secret_E"
+            },
+            {
+              "modality-name": "Kw.diamond",
+              "modality-index": [
+                "D"
+              ],
+              "formula": "secret_E"
+            }
+          ]
+        }
+      }
+    },
+    "effects": {
+      "e-tell-pos": null,
+      "e-tell-neg": null
+    },
+    "observability-conditions": {
+      "A": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "B": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "C": {
+        "Partially": {
+          "formula": "true"
+        }
+      },
+      "D": {
+        "Fully": {
+          "formula": "true"
+        }
+      },
+      "E": {
+        "Fully": {
+          "formula": "true"
+        }
+      }
+    }
+  }
+},
+"goal": {
+  "formula": {
+    "connective": "and",
+    "formulas": [
+      {
+        "modality-name": "Kw.box",
+        "modality-index": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ],
+        "formula": "secret_A"
+      },
+      {
+        "modality-name": "Kw.box",
+        "modality-index": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ],
+        "formula": "secret_B"
+      },
+      {
+        "modality-name": "Kw.box",
+        "modality-index": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ],
+        "formula": "secret_C"
+      },
+      {
+        "modality-name": "Kw.box",
+        "modality-index": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ],
+        "formula": "secret_D"
+      },
+      {
+        "modality-name": "Kw.box",
+        "modality-index": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ],
+        "formula": "secret_E"
+      }
+    ]
+  }
+}
+}
