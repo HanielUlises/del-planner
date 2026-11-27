@@ -425,10 +425,18 @@ passes it. kadd/kff now record the dead conjuncts of their last estimate
 (`last_dead_conjuncts`), which the suspect test reads; other heuristics keep
 the threshold.
 
-Open: symbolic h^Δ on gossip *all* n = 64 (`--dead-ends all`, or suspect
-before the fix) throws `bdd: order violated in mk` in `Relaxation::to_y`
-after about 400 s: the argument of the x→y renaming contains a y variable
-(atom 39). Not reproduced at n ≤ 32; being investigated.
+Fixed (2026-11-27): symbolic h^Δ on gossip *all* n = 64 (`--dead-ends all`,
+or suspect before the fix above) threw `bdd: order violated in mk` after
+about 400 s. Each `permute()`/`swap_adjacent()` call caches under its own op
+code, kPermBase + 2·epoch (+1 if monotone), in 32 bits. After about 2^31
+calls (one h^Δ `build_cuts` renames ≈ 64 agents × 4 032 actions × 3 events
+functions) the code wrapped onto the fixed codes: the renaming x_p → y_p was
+cached as kNeg, so neg(x_p) returned y_p and the atom's false-set
+θ ∧ ¬x_p contained a y variable. The manager now drops the cache and restarts
+the epoch before the code can overflow (`next_perm_op`; test
+`permutation_op_codes_never_collide`, which failed before). Runs below 2^31
+renamings were unaffected; every plan reported above was also replayed in a
+fresh process, whose epoch stays far from the wrap.
 
 Also tried: evaluating fact formulas only on the designated worlds (pointed
 model checking, [i]ψ on U needs ψ only on R_i(U)). The facts are equal but it

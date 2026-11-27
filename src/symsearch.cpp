@@ -345,6 +345,7 @@ void Search::finish() {
     st_.fixpoint_runs = es.fixpoint_runs;
     st_.fixpoint_rounds = es.fixpoint_rounds;
     st_.peak_bdd_nodes = std::max(st_.peak_bdd_nodes, eng_.mgr().peak_live());
+    st_.perm_restarts = eng_.mgr().perm_restarts();
     res_.stats.closed_size = closed_.size();
     res_.stats.stop_timer();
 }

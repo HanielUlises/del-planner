@@ -119,6 +119,24 @@ TEST(gc_keeps_roots_and_reuses_freed_nodes) {
     }
 }
 
+// Each permute()/swap_adjacent() call caches under its own op code,
+// kPermBase + 2·epoch (+1 if monotone). Near 2^31 calls that wrapped below
+// kPermBase onto the fixed codes, so a renaming x0 -> x1 was stored as
+// neg(x0) (seen as y variables in h^Δ on gossip with 64 agents).
+TEST(permutation_op_codes_never_collide) {
+    bdd::Manager m(4);
+    const std::vector<std::uint32_t> shift{1, 2, 3, 3};
+    for (std::uint32_t e : {0x7FFFFFD0u, 0x7FFFFFDFu, 0x7FFFFFE0u, 0xFFFFFFF0u}) {
+        m.set_perm_epoch(e);
+        for (int k = 0; k < 64; ++k) {
+            const bdd::Ref x0 = m.var(0);
+            CHECK(m.permute(x0, shift, true) == m.var(1));
+            CHECK(m.neg(x0) == m.nvar(0));
+            CHECK(m.band(m.neg(x0), m.var(2)) == m.band(m.nvar(0), m.var(2)));
+        }
+    }
+}
+
 TEST(swap_adjacent_matches_permute) {
     bdd::Manager m(30);
     std::mt19937 rng(11);

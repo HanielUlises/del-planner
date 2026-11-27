@@ -65,6 +65,7 @@ struct Stats {
     std::size_t symmetric_inherited{0};   // fixing swaps carried from the parent, not tested
     bool        full_symbolic{false};      // the run chose every state symbolic
     std::size_t gc_runs{0};
+    std::size_t perm_restarts{0};      // permutation op codes exhausted, cache dropped
     std::size_t peak_bdd_nodes{0};
     std::size_t peak_bdd_bytes{0};
     double      max_worlds{0};

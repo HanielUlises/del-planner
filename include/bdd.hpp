@@ -49,6 +49,8 @@ public:
     [[nodiscard]] std::size_t peak_live() const noexcept { return peak_live_; }
     [[nodiscard]] std::size_t gc_runs() const noexcept { return gc_runs_; }
     [[nodiscard]] std::uint64_t gc_epoch() const noexcept { return gc_runs_; }
+    // Times the permutation epoch ran out and the cache was dropped.
+    [[nodiscard]] std::size_t perm_restarts() const noexcept { return perm_restarts_; }
     [[nodiscard]] std::size_t cache_entries() const noexcept { return cache_.size(); }
     // Bytes held by the node array, the unique table and the computed cache.
     [[nodiscard]] std::size_t bytes() const noexcept {
@@ -305,11 +307,28 @@ public:
         return r;
     }
 
+    // Tests only: position the permutation epoch (see next_perm_op).
+    void set_perm_epoch(std::uint32_t e) noexcept { perm_epoch_ = e; }
+
+    // A fresh op code for one permute()/swap_adjacent() call, so that its cache
+    // entries are never read by another call: kPermBase + 2·epoch (+1 if
+    // monotone). Before that can leave 32 bits and wrap onto the fixed codes
+    // (after about 2^31 calls), the cache is dropped and the epoch restarts.
+    std::uint32_t next_perm_op(bool monotone) {
+        constexpr std::uint32_t kLast = (0xFFFFFFFFu - kPermBase - 1u) / 2u;
+        if (perm_epoch_ >= kLast) {
+            std::fill(cache_.begin(), cache_.end(), Entry{0, 0, 0, 0, 0});
+            perm_epoch_ = 0;
+            ++perm_restarts_;
+        }
+        return kPermBase + (++perm_epoch_ << 1) + (monotone ? 1u : 0u);
+    }
+
     // Rename variables by perm (perm[v] = new variable of v; size num_vars()).
     // monotone = the caller guarantees perm is increasing on the support of f,
     // which permits a structural relabelling; otherwise ITE rebuilds.
     Ref permute(Ref f, const std::vector<std::uint32_t>& perm, bool monotone) {
-        const std::uint32_t op = kPermBase + (++perm_epoch_ << 1) + (monotone ? 1u : 0u);
+        const std::uint32_t op = next_perm_op(monotone);
         perm_ = &perm;
         return permute_rec(f, op, monotone);
     }
@@ -318,7 +337,7 @@ public:
     // not overlap). Adjacent levels swap in one pass, linear in |f| like a
     // monotone relabelling, where permute() would rebuild through ITE.
     Ref swap_adjacent(Ref f, const std::vector<std::uint8_t>& first) {
-        const std::uint32_t op = kPermBase + (++perm_epoch_ << 1);
+        const std::uint32_t op = next_perm_op(false);
         swap_first_ = &first;
         return swap_rec(f, op);
     }
@@ -482,6 +501,7 @@ private:
     std::vector<Entry> cache_;
     std::size_t cmask_{0};
     std::uint32_t perm_epoch_{0};
+    std::size_t   perm_restarts_{0};
     const std::vector<std::uint32_t>* perm_{nullptr};
     const std::vector<std::uint8_t>* swap_first_{nullptr};
 };

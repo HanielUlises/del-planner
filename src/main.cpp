@@ -435,7 +435,7 @@ int main(int argc, char* argv[]) {
                   << ss.hidden_checks << " checks, " << ss.hidden_closed << " kept)\n"
                   << "[symsearch] contractions " << ss.contractions << " (fixpoint skipped "
                   << ss.fixpoint_skipped << ", run " << ss.fixpoint_runs << ", "
-                  << ss.fixpoint_rounds << " rounds); gc " << ss.gc_runs
+                  << ss.fixpoint_rounds << " rounds); gc " << ss.gc_runs << " (op-code restarts " << ss.perm_restarts << ")"
                   << "; peak BDD nodes " << ss.peak_bdd_nodes << " (" << ss.peak_bdd_bytes / (1 << 20)
                   << " MiB); max worlds " << ss.max_worlds << "\n"
                   << "[symsearch] time: update " << ss.t_update << " s, contract " << ss.t_contract
