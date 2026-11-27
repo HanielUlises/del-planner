@@ -1,5 +1,7 @@
 #include "symmetry.hpp"
 
+#include <functional>
+
 #include "bisimulation.hpp"
 #include "parallel.hpp"
 
@@ -279,8 +281,42 @@ AgentSymmetry AgentSymmetry::detect(const PlanningTask& task, Deadline deadline)
     return sym;
 }
 
-StateSymmetry stabiliser(const AgentSymmetry& sym, const EpistemicState& s) {
+namespace {
+// Components of the swap graph spanned by `fixing`.
+StateSymmetry components(std::uint32_t na, const std::vector<const AgentSymmetry::Swap*>& fixing) {
     StateSymmetry st;
+    std::vector<std::uint32_t> parent(na);
+    std::iota(parent.begin(), parent.end(), 0);
+    const auto find = [&](std::uint32_t x) {
+        while (parent[x] != x) x = parent[x] = parent[parent[x]];
+        return x;
+    };
+    for (const auto* sw : fixing) {
+        parent[find(sw->a)] = find(sw->b);
+        st.trivial = false;
+    }
+    if (st.trivial) return st;
+
+    // Number components by smallest member, list members ascending.
+    st.component.assign(na, UINT32_MAX);
+    std::vector<std::uint32_t> id_of_root(na, UINT32_MAX);
+    std::uint32_t n = 0;
+    for (AgentIdx ag = 0; ag < na; ++ag) {
+        const std::uint32_t r = find(ag);
+        if (id_of_root[r] == UINT32_MAX) id_of_root[r] = n++;
+        st.component[ag] = id_of_root[r];
+    }
+    st.begin.assign(n + 1, 0);
+    for (AgentIdx ag = 0; ag < na; ++ag) ++st.begin[st.component[ag] + 1];
+    for (std::uint32_t c = 0; c < n; ++c) st.begin[c + 1] += st.begin[c];
+    st.members.resize(na);
+    std::vector<std::uint32_t> fill(st.begin.begin(), st.begin.end() - 1);
+    for (AgentIdx ag = 0; ag < na; ++ag) st.members[fill[st.component[ag]]++] = ag;
+    return st;
+}
+} // namespace
+
+StateSymmetry stabiliser(const AgentSymmetry& sym, const EpistemicState& s) {
     const std::uint32_t na = s.num_agents;
 
     std::vector<std::uint32_t> parent(na);
@@ -325,29 +361,27 @@ StateSymmetry stabiliser(const AgentSymmetry& sym, const EpistemicState& s) {
                 if (fixes[k]) parent[find(cands[k]->a)] = find(cands[k]->b);
             }
     }
-    for (std::size_t k = 0; k < cands.size(); ++k) {
-        if (!fixes[k]) continue;
-        parent[find(cands[k]->a)] = find(cands[k]->b);
-        st.trivial = false;
-    }
-    if (st.trivial) return st;
+    std::vector<const AgentSymmetry::Swap*> fixing;
+    for (std::size_t k = 0; k < cands.size(); ++k) if (fixes[k]) fixing.push_back(cands[k]);
+    return components(na, fixing);
+}
 
-    // Number components by smallest member, list members ascending.
-    st.component.assign(na, UINT32_MAX);
-    std::vector<std::uint32_t> id_of_root(na, UINT32_MAX);
-    std::uint32_t n = 0;
-    for (AgentIdx ag = 0; ag < na; ++ag) {
-        const std::uint32_t r = find(ag);
-        if (id_of_root[r] == UINT32_MAX) id_of_root[r] = n++;
-        st.component[ag] = id_of_root[r];
+StateSymmetry stabiliser_by(const AgentSymmetry& sym, std::uint32_t num_agents,
+                            const std::function<bool(const AgentSymmetry::Swap&)>& fixes) {
+    std::vector<std::uint32_t> parent(num_agents);
+    std::iota(parent.begin(), parent.end(), 0);
+    const auto find = [&](std::uint32_t x) {
+        while (parent[x] != x) x = parent[x] = parent[parent[x]];
+        return x;
+    };
+    std::vector<const AgentSymmetry::Swap*> fixing;
+    for (const auto& sw : sym.swaps) {
+        if (find(sw.a) == find(sw.b)) continue;       // already connected
+        if (!fixes(sw)) continue;
+        parent[find(sw.a)] = find(sw.b);
+        fixing.push_back(&sw);
     }
-    st.begin.assign(n + 1, 0);
-    for (AgentIdx ag = 0; ag < na; ++ag) ++st.begin[st.component[ag] + 1];
-    for (std::uint32_t c = 0; c < n; ++c) st.begin[c + 1] += st.begin[c];
-    st.members.resize(na);
-    std::vector<std::uint32_t> fill(st.begin.begin(), st.begin.end() - 1);
-    for (AgentIdx ag = 0; ag < na; ++ag) st.members[fill[st.component[ag]]++] = ag;
-    return st;
+    return components(num_agents, fixing);
 }
 
 bool StateSymmetry::keep(const AgentSymmetry& sym, ActionIdx action) const {

@@ -2,6 +2,7 @@
 #include "search.hpp"
 #include "task.hpp"
 
+#include <functional>
 #include <vector>
 
 // Agent symmetry.
@@ -45,3 +46,9 @@ struct StateSymmetry {
 
 // `s` must be canonical (produced by bisim_contract).
 [[nodiscard]] StateSymmetry stabiliser(const AgentSymmetry& sym, const EpistemicState& s);
+
+// The same from a test of whether one swap fixes the state, for states held in
+// another representation (the symbolic engine). Swaps between agents already
+// connected are not tested.
+[[nodiscard]] StateSymmetry stabiliser_by(const AgentSymmetry& sym, std::uint32_t num_agents,
+                                          const std::function<bool(const AgentSymmetry::Swap&)>& fixes);
