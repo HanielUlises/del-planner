@@ -45,6 +45,7 @@ const std::vector<std::string>& fixtures() {
         "benchmarks/amc1/amc-problem.json",
         "tests/symbolic/intermediate-gos-05-all.json",
         "tests/symbolic/hard-gos-04-imp-deceived.json",
+        "tests/symbolic/deep-gossip-05-one.json",
     };
     return f;
 }
@@ -327,7 +328,8 @@ TEST(hybrid_search_finds_valid_plans_at_every_threshold) {
     for (const char* f : {"benchmarks/gossip1/problem_1.json", "benchmarks/coin1/problem_1.json",
                           "benchmarks/muddy1/muddy-children-problem.json",
                           "tests/symbolic/intermediate-gos-05-all.json",
-                          "tests/symbolic/hard-gos-04-imp-deceived.json"}) {
+                          "tests/symbolic/hard-gos-04-imp-deceived.json",
+                          "tests/symbolic/deep-gossip-05-one.json"}) {
         PlanningTask t = load(f);
         t.symmetry = std::make_shared<AgentSymmetry>(AgentSymmetry::detect(t));
         const KnowledgeRelaxationHeuristic h(t);
@@ -377,6 +379,28 @@ TEST(hybrid_search_from_theory) {
     }
 }
 
+
+// deep's gossip goal is one box over a conjunction, [0](s_0 ∧ … ∧ s_4). kadd
+// splits it into [0]s_j, so the initial estimate is finite (it was the
+// dead-conjunct penalty in every state) and GBFS finds the 4 direct tells.
+TEST(kadd_splits_boxes_over_conjunctions) {
+    PlanningTask t = load("tests/symbolic/deep-gossip-05-one.json");
+    CHECK(t.goal->kind == FormulaKind::Belief && t.goal->children[0]->kind == FormulaKind::And);
+    const KnowledgeRelaxationHeuristic h(t);
+    const float h0 = h(t.init, t);
+    CHECK_MSG(h0 > 0 && h0 < 1000, std::to_string(h0));
+    PlanningTask u = t;                                     // the same goal, split by hand
+    std::vector<FormulaPtr> bs;
+    for (const auto& c : t.goal->children[0]->children) bs.push_back(Formula::make_belief(t.goal->agent, c));
+    u.goal = Formula::make_and(std::move(bs));
+    CHECK(h0 == KnowledgeRelaxationHeuristic(u)(u.init, u));
+    t.symmetry = std::make_shared<AgentSymmetry>(AgentSymmetry::detect(t));
+    std::cerr.setstate(std::ios::failbit);
+    const auto r = gbfs::search(t, h);
+    std::cerr.clear();
+    CHECK(r.has_value());
+    if (r) { CHECK(valid(t, r->plan)); CHECK_MSG(r->plan.size() == 4, std::to_string(r->plan.size())); }
+}
 } // namespace
 
 int main() { return run_all(); }

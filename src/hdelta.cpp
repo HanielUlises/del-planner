@@ -1,4 +1,5 @@
 #include "hdelta.hpp"
+#include <utility>
 
 #include <cmath>
 
@@ -588,10 +589,12 @@ bool prunes(const PlanningTask& t, const EpistemicState& s, float h) {
     case DeadEndCheck::Off:
     case DeadEndCheck::Root:
         return false;
-    case DeadEndCheck::Suspect:
+    case DeadEndCheck::Suspect: {
         if (std::isinf(h)) return true;
-        if (h < t.dead_end_suspect) return false;
+        const int dead = std::exchange(last_dead_conjuncts, -1);
+        if (dead >= 0 ? dead == 0 : h < t.dead_end_suspect) return false;
         return h_delta(t, s) == kInf;
+    }
     case DeadEndCheck::All:
         return std::isinf(h) || h_delta(t, s) == kInf;
     }

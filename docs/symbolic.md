@@ -337,10 +337,103 @@ hard n = 16 replay correctly in the explicit engine (n = 15: 274 s explicit,
 19 s symbolic); all of them replay in the
 symbolic one.
 
-Against deep on deep's own gossip formulation (private tells, mA*), translated
-with `ma2json.py`, plans validated by deep's plan execution: n = 5, deep
-HFS+C_PG 11.4 s, ours 0.04 s; n = 6, deep 226 s (portfolio: no plan), ours
-0.2 s (`exploration/symbolic/deepcmp/`).
+Against deep on deep's own gossip formulation (private tells, mA*; goal *one*:
+agent 0 believes every secret, deep's form; *all*: every agent does),
+translated with `ma2json.py`. Limits: 600 s, 12 GB (RLIMIT_AS), one thread.
+Ours is GBFS+kadd, explicit or `--symbolic` with the per-run choice
+(all-symbolic from n = 10, where the initial state has 2^10 worlds; below
+that no state crosses the thresholds and the run is explicit), with kadd
+splitting the goal as described in the next section. deep is not run beyond
+n = 8. Times are wall clock including loading (n = 16: 65 536 initial worlds
+in JSON, about 60 s of the symbolic "one" run; its search takes 0.5 s).
+
+| n | goal | deep portfolio | deep HFS+C_PG | ours explicit | ours `--symbolic` |
+|---|---|---|---|---|---|
+| 5 | one | 23.9 s, 2.3 GB, 14 steps | 11.4 s, 314 MB, 14 steps | 0.004 s, 4 steps | 0.005 s, 4 steps |
+| 5 | all | 34.7 s, 3.1 GB | 17.0 s, 420 MB | 0.02 s | 0.02 s |
+| 6 | one | out of memory | 184 s, 4.6 GB, 22 steps | 0.005 s, 5 steps | 0.006 s, 5 steps |
+| 6 | all | out of memory | 205 s, 5.2 GB | 0.07 s | 0.07 s |
+| 7 | one | out of memory | timeout | 0.02 s | 0.01 s |
+| 7 | all | out of memory | out of memory | 0.31 s | 0.36 s |
+| 8 | one | out of memory | out of memory | 0.02 s | 0.02 s |
+| 8 | all | out of memory | out of memory | 1.4 s, 157 MB | 1.6 s, 158 MB |
+| 10 | one | — | — | 0.10 s | 0.07 s |
+| 10 | all | — | — | 30 s, 2.6 GB | 19 s, 171 MB |
+| 12 | one | — | — | 0.78 s | 0.30 s |
+| 12 | all | — | — | out of memory | 61 s, 338 MB |
+| 14 | one | — | — | 9.2 s, 463 MB | 3.8 s, 104 MB |
+| 14 | all | — | — | out of memory | 215 s, 372 MB |
+| 16 | one | — | — | 121 s, 2.8 GB | 63 s, 212 MB |
+| 16 | all | — | — | out of memory | 561 s, 576 MB |
+
+Beyond n = 16, `ma2json.py --theory` writes the initial state as a finitary S5
+theory (type 1 the `initially` literals, type 2 propositional common
+knowledge, type 3 the C(B(i,f) | B(i,¬f)) statements), which is never
+materialised. At n = 10 it gives the same plans and expansions as the explicit
+file. Symbolic, *one*: n = 20 0.5 s, 24 0.9 s, 32 3.1 s, 48 22 s, 64 75 s
+(840 MB; up to 6·10^20 worlds), all with n − 1 tells; *all* times out from
+n = 20. These plans are replayed in the symbolic engine only
+(`symcheck --no-explicit`; n = 20 also explicitly): `symcheck` reports
+`goal_explicit` equal to the symbolic result when the explicit engine does
+not run, so `fixup.py`'s `valid_explicit_replay` is not an explicit check
+there (n = 24: the explicit replay ran out of memory, recorded as false).
+
+Plans: *one* n − 1 tells, *all* n(n − 1). Up to n = 8 they are validated by
+deep's plan execution (`deep -e`). From n = 10, `deep -e` itself throws
+`bad_alloc` at 12 GB (n = 10: after 348 s), so those plans are replayed in our
+explicit engine instead (`symcheck --enum 0`; all reach the goal). With the
+kadd of before the split, *one* took 251 s explicit / 60 s symbolic at n = 10
+(74 steps), symbolic 271 s at n = 12, and timed out at n = 14 in both
+representations. Data: `exploration/symbolic/deepcmp/results_fixed.jsonl`
+(old kadd, deep) and `results_sym3.jsonl` (split kadd); `run.py`, then
+`fixup.py`.
+
+### kadd: boxes over conjunctions (2026-11-27)
+
+deep's goal is one formula, [0](s_0 ∧ … ∧ s_n). kadd made it a single fact,
+which its relaxation never reaches, so every state had h = 1000 (the
+dead-conjunct penalty) until the goal held. GBFS ran on helpful actions and
+tie-breaking alone, and the default `--dead-ends suspect` ran h^Δ on every
+node (77–85 % of the time, never pruning). kadd now splits
+[i](φ ∧ ψ) into [i]φ ∧ [i]ψ, valid in every Kripke model, both among goal
+conjuncts and inside compiled formulas (test
+`kadd_splits_boxes_over_conjunctions`, fixture `deep-gossip-05-one.json`).
+
+Suite (GBFS+kadd, one thread, 300 s, dead ends off; `gbfs-kadd-exp3` /
+`auto3` against `exp2` / `auto`): 14 of 142 tasks contain such a box (coin
+in the box, intermediate and hard blocks world). Valid plans 124 → 122 in
+both configurations:
+
+- intermediate bw-4-05-2: 12.9 s, 2 892 steps → 0.03 s, 3 steps;
+  bw-3-06-2: 28 → 21 steps; hard bw-3-5-2-clumsy: 169 → 87 steps; coin 4:
+  8 → 6 steps (coin 2: 3 → 4);
+- lost: intermediate bw-4-07-3 (165 s → timeout) and hard bw-4-5-2-clumsy
+  (73 s → timeout; the helpful-action search runs dry and the retry without
+  pruning does not finish).
+
+Splitting only the goal gives the same results on these tasks. Both lost
+goals require a false belief: bw-4-5-2-clumsy wants [C]on(b3, b1) and
+[D](on(b3, b4) ∧ …), bw-4-07-3 wants [D](on(b5, b6) ∧ on(b5, b7)). The
+delete-free relaxation cannot see that the conjuncts conflict; the old kadd
+ignored one of them (it was a dead fact) and stumbled on a plan. Neither
+`--no-helpful` nor a reserve queue for the held-back non-preferred actions
+(instead of restarting) recovers them in 300 s. Every plan returned is valid.
+
+`--dead-ends suspect` ran h^Δ on nodes with kadd ≥ 1000, the per-conjunct
+penalty; with many conjuncts (gossip *all*, n(n − 1)) a finite estimate
+passes it. kadd/kff now record the dead conjuncts of their last estimate
+(`last_dead_conjuncts`), which the suspect test reads; other heuristics keep
+the threshold.
+
+Open: symbolic h^Δ on gossip *all* n = 64 (`--dead-ends all`, or suspect
+before the fix) throws `bdd: order violated in mk` in `Relaxation::to_y`
+after about 400 s: the argument of the x→y renaming contains a y variable
+(atom 39). Not reproduced at n ≤ 32; being investigated.
+
+Also tried: evaluating fact formulas only on the designated worlds (pointed
+model checking, [i]ψ on U needs ψ only on R_i(U)). The facts are equal but it
+was not faster (n = 16: 0.06 s against 0.02 s for the whole search's
+heuristic); reverted.
 
 Hard gos-12-imp-deceived: 2.5 s symbolic against 4.4 s explicit (each
 includes about 1.8 s of loading). Intermediate gos-09-all, the largest size

@@ -61,8 +61,10 @@ struct PlanningTask {
     // GBFS expands the heuristic's preferred actions first.
     bool helpful_actions = true;
 
-    // Dead-end detection with h^Δ; Suspect checks nodes whose heuristic value
-    // is at least dead_end_suspect, the per-conjunct penalty of kadd and kff.
+    // Dead-end detection with h^Δ; Suspect checks nodes on which kadd or kff
+    // found a goal conjunct unreachable (last_dead_conjuncts), and for other
+    // heuristics nodes whose value is at least dead_end_suspect, the
+    // per-conjunct penalty of kadd and kff.
     DeadEndCheck dead_end_check = DeadEndCheck::Suspect;
     float        dead_end_suspect = 1000.f;
 
@@ -99,3 +101,9 @@ struct PlanningTask {
     size_t num_agents()  const { return agent_names.size(); }
     size_t num_actions() const { return actions.size(); }
 };
+
+// Goal conjuncts that the last kadd/kff estimate on this thread found
+// unreachable, or -1. A finite estimate can exceed the per-conjunct penalty
+// when the goal has many conjuncts (gossip "all": n(n-1)), so the Suspect
+// test reads this instead of comparing the value when it is set.
+inline thread_local int last_dead_conjuncts = -1;

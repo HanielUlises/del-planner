@@ -1,4 +1,5 @@
 #include "symsearch.hpp"
+#include <utility>
 
 #include "bisimulation.hpp"
 #include "hdelta.hpp"
@@ -160,10 +161,12 @@ bool Search::dead_sym(sym::SymState& s, float h) {
     case DeadEndCheck::Off:
     case DeadEndCheck::Root:
         return false;
-    case DeadEndCheck::Suspect:
+    case DeadEndCheck::Suspect: {
         if (std::isinf(h)) return true;
-        if (h < t_.dead_end_suspect) return false;
+        const int dead = std::exchange(last_dead_conjuncts, -1);
+        if (dead >= 0 ? dead == 0 : h < t_.dead_end_suspect) return false;
         break;
+    }
     case DeadEndCheck::All:
         if (std::isinf(h)) return true;
         break;
