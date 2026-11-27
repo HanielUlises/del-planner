@@ -120,8 +120,11 @@ int main(int argc, char** argv) {
     const bool goal_exp = run_explicit && ok ? s.satisfies(*t.goal) : goal;
     std::printf("{\"summary\":true,\"ok\":%s,\"goal\":%s,\"goal_explicit\":%s,\"steps\":%zu,\"iso_checked\":%zu,"
                 "\"max_worlds\":%.0f,\"max_hidden\":%zu,\"max_nodes\":%zu,\"bdd_nodes_total\":%zu,"
-                "\"t_sym\":%.4f,\"t_exp\":%.4f}\n",
+                "\"t_sym\":%.4f,\"t_exp\":%.4f,\"t_reach\":%.4f,\"t_fixpoint\":%.4f,\"t_quotient\":%.4f,"
+                "\"fixpoint_runs\":%zu,\"fixpoint_rounds\":%zu}\n",
                 ok && goal == goal_exp ? "true" : "false", goal ? "true" : "false", goal_exp ? "true" : "false",
-                plan.size(), iso, max_worlds, max_hidden, max_nodes, eng.mgr().size(), tsym, texp);
+                plan.size(), iso, max_worlds, max_hidden, max_nodes, eng.mgr().size(), tsym, texp,
+                eng.stats.t_reach, eng.stats.t_fixpoint, eng.stats.t_quotient,
+                eng.stats.fixpoint_runs, eng.stats.fixpoint_rounds);
     return ok ? 0 : 1;
 }

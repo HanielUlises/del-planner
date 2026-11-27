@@ -71,7 +71,7 @@ holds `null`. An empty array means the goal already held.
 |---|---|
 | `--task <path>` | Grounded JSON task (required) |
 | `--plan <path>` | Output plan file (required) |
-| `--heuristic <label>` | `ug`, `ed`, `ks`, `wc`, `rpg`, `radd`, `kadd`, `kff`. Default: chosen by policy |
+| `--heuristic <label>` | `ug`, `ed`, `ks`, `wc`, `rpg`, `radd`, `kadd`, `kff`, `hd`, `hdsum`. Default: chosen by policy |
 | `--strategy <label>` | `gbfs`, `ehc`, `aostar`, `replan`, `portfolio` (races compatible configurations in parallel). Default: chosen by policy |
 | `--policy <path>` | Selection-policy JSON; replaces the built-in rules |
 | `--print-policy` | Write the effective policy to stdout and exit |
@@ -86,6 +86,9 @@ holds `null`. An empty array means the goal already held.
 | `--no-portfolio` | Auto-selected AO\* on sensing tasks keeps the whole budget instead of handing over to replan |
 | `--no-helpful` | GBFS expands every action instead of the relaxed plan's helpful actions first |
 | `--signature` | Print the task's structural signature (topology, fixed-point depths, growth, symmetry) as JSON and exit |
+| `--symbolic` | Hybrid GBFS: states above 4 096 worlds whose valuation is injective are held as BDDs, all others explicitly; see below |
+| `--symbolic-threshold <n>` | World count above which an injective state is symbolic (implies `--symbolic`; 0 = always) |
+| `--symbolic-hidden-threshold <n>` | The same for states that are not valuation-injective (default 1 048 576) |
 | `--help` | Show usage |
 
 An unknown heuristic or strategy label is an error listing the valid ones, not
@@ -109,6 +112,30 @@ should turn it on: a robot credited with a belief it cannot hold has not
 learned anything. On the smoke suite every instance still solves; `coin4`,
 `coin5` and `depot3` need longer plans, since their shortest ones depend on
 a collapsed belief.
+
+### Symbolic search
+
+`--symbolic` runs the same greedy best-first search with a second state
+representation: the BDD engine of [symbolic.md](symbolic.md). A contracted
+state is held symbolically when it has more than `--symbolic-threshold` worlds
+(default 4 096) and no two of its worlds share a valuation, or more than
+`--symbolic-hidden-threshold` worlds (default 2^20); otherwise explicitly.
+Both tests are bisimulation invariants, so a state always gets the same
+representation and duplicate detection stays exact. The heuristics `kadd` and
+`kff` give the same values on both representations; `hd` and `hdsum` use a
+symbolic h^Δ above the threshold, which is admissible but may be weaker; `ug`
+is also available. The search is linear (GBFS) and does not support
+`--kd45-repair` or `--consistent-beliefs`.
+
+A task whose initial state is a finitary S5 theory (`ground --theory`) is
+materialised only when it fits under the threshold; larger ones start from the
+theory and are never enumerated (generated gossip with 64 agents has
+1.8·10^19 worlds). Statistics go to stderr as `[symsearch]` lines.
+
+```sh
+build-ground/ground --theory -d domain.epddl -p problem.epddl -l library.epddl -o task.json
+build/epistemic_planner --task task.json --plan plan.json --heuristic kadd --symbolic
+```
 
 ### Wrapper scripts
 

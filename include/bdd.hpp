@@ -1,7 +1,12 @@
 #pragma once
 // A small reduced ordered BDD package: unique table, lossy computed cache,
-// static variable order (variable index = level). No complement edges and no
-// garbage collection: a Manager lives for one task.
+// static variable order (variable index = level), no complement edges.
+//
+// Memory: gc(roots) is a non-moving mark-and-sweep. Nodes not reachable from
+// the roots go to a free list that mk() reuses, so every Ref the caller keeps
+// as a root stays valid; any other Ref held across gc() dangles. The computed
+// cache is cleared by gc() and grows with the unique table, from 2^16 entries
+// up to 2^cache_log2.
 //
 // Operations: ITE, AND, OR, XOR, NOT, cofactors, EXISTS, AND-EXISTS (relational
 // product), variable permutation (structural when order-preserving), model
@@ -27,18 +32,63 @@ struct Node { std::uint32_t var; Ref lo, hi; };
 
 class Manager {
 public:
-    explicit Manager(std::uint32_t nvars, unsigned cache_log2 = 22, unsigned table_log2 = 20)
-        : nvars_(nvars) {
+    explicit Manager(std::uint32_t nvars, unsigned cache_log2 = 23, unsigned table_log2 = 16)
+        : nvars_(nvars), cache_max_(std::size_t(1) << cache_log2) {
         nodes_.reserve(std::size_t(1) << table_log2);
         nodes_.push_back({kTerm, kFalse, kFalse});
         nodes_.push_back({kTerm, kTrue, kTrue});
         table_.assign(std::size_t(1) << table_log2, kNone);
-        cache_.assign(std::size_t(1) << cache_log2, Entry{0, 0, 0, 0, 0});
+        cache_.assign(std::min(cache_max_, table_.size()), Entry{0, 0, 0, 0, 0});
         cmask_ = cache_.size() - 1;
     }
 
     [[nodiscard]] std::uint32_t num_vars() const noexcept { return nvars_; }
+    // Node slots ever allocated (live or free) and live nodes, terminals included.
     [[nodiscard]] std::size_t size() const noexcept { return nodes_.size(); }
+    [[nodiscard]] std::size_t live() const noexcept { return live_; }
+    [[nodiscard]] std::size_t peak_live() const noexcept { return peak_live_; }
+    [[nodiscard]] std::size_t gc_runs() const noexcept { return gc_runs_; }
+    [[nodiscard]] std::uint64_t gc_epoch() const noexcept { return gc_runs_; }
+    [[nodiscard]] std::size_t cache_entries() const noexcept { return cache_.size(); }
+    // Bytes held by the node array, the unique table and the computed cache.
+    [[nodiscard]] std::size_t bytes() const noexcept {
+        return nodes_.capacity() * sizeof(Node) + table_.size() * sizeof(Ref) +
+               cache_.size() * sizeof(Entry);
+    }
+    // True once the nodes created since the last collection outnumber the
+    // nodes it kept (and at least min_new were created).
+    [[nodiscard]] bool should_gc(std::size_t min_new = std::size_t(1) << 20) const noexcept {
+        return created_since_gc_ >= std::max(min_new, kept_at_gc_);
+    }
+
+    // Frees every node unreachable from `roots`; returns the number freed.
+    std::size_t gc(const std::vector<Ref>& roots) {
+        std::vector<std::uint8_t> mark(nodes_.size(), 0);
+        mark[kFalse] = mark[kTrue] = 1;
+        std::vector<Ref> st(roots.begin(), roots.end());
+        while (!st.empty()) {
+            const Ref r = st.back(); st.pop_back();
+            if (mark[r]) continue;
+            if (nodes_[r].var == kFree) throw std::logic_error("bdd: gc root is a freed node");
+            mark[r] = 1;
+            st.push_back(nodes_[r].lo); st.push_back(nodes_[r].hi);
+        }
+        std::size_t freed = 0;
+        for (Ref r = 2; r < nodes_.size(); ++r) {
+            if (mark[r] || nodes_[r].var == kFree) continue;
+            nodes_[r] = Node{kFree, free_, kFalse};
+            free_ = r;
+            ++freed;
+        }
+        live_ -= freed;
+        std::fill(table_.begin(), table_.end(), kNone);
+        rehash(table_);
+        std::fill(cache_.begin(), cache_.end(), Entry{0, 0, 0, 0, 0});
+        ++gc_runs_;
+        created_since_gc_ = 0;
+        kept_at_gc_ = live_;
+        return freed;
+    }
     [[nodiscard]] std::uint32_t top(Ref f) const noexcept { return nodes_[f].var; }
     [[nodiscard]] Ref lo(Ref f) const noexcept { return nodes_[f].lo; }
     [[nodiscard]] Ref hi(Ref f) const noexcept { return nodes_[f].hi; }
@@ -57,11 +107,21 @@ public:
             if (n.var == v && n.lo == l && n.hi == h) return r;
             i = (i + 1) & (table_.size() - 1);
         }
-        const Ref r = static_cast<Ref>(nodes_.size());
-        if (r == kNone) throw std::runtime_error("bdd: node table full");
-        nodes_.push_back({v, l, h});
+        Ref r;
+        if (free_ != kNone) {
+            r = free_;
+            free_ = nodes_[r].lo;
+            nodes_[r] = Node{v, l, h};
+        } else {
+            r = static_cast<Ref>(nodes_.size());
+            if (r >= kFree) throw std::runtime_error("bdd: node table full");
+            nodes_.push_back({v, l, h});
+        }
         table_[i] = r;
-        if (nodes_.size() * 2 > table_.size()) grow();
+        ++live_;
+        ++created_since_gc_;
+        peak_live_ = std::max(peak_live_, live_);
+        if (live_ * 2 > table_.size()) grow();
         return r;
     }
 
@@ -254,6 +314,15 @@ public:
         return permute_rec(f, op, monotone);
     }
 
+    // Exchange variables v and v+1 for every v with first[v] != 0 (pairs must
+    // not overlap). Adjacent levels swap in one pass, linear in |f| like a
+    // monotone relabelling, where permute() would rebuild through ITE.
+    Ref swap_adjacent(Ref f, const std::vector<std::uint8_t>& first) {
+        const std::uint32_t op = kPermBase + (++perm_epoch_ << 1);
+        swap_first_ = &first;
+        return swap_rec(f, op);
+    }
+
     // Number of assignments to `vars` (any order, must contain supp(f)).
     // Gaps are scaled per level, so a small count is exact however many
     // variables the set has.
@@ -301,6 +370,7 @@ public:
 
 private:
     static constexpr Ref kNone = 0xFFFFFFFFu;
+    static constexpr std::uint32_t kFree = 0xFFFFFFFEu;   // var of a node on the free list
     enum : std::uint32_t { kNeg = 1, kAnd, kOr, kXor, kIte, kCof0, kCof1, kRestrict,
                            kExists, kAndEx, kPermBase = 64 };
     struct Entry { std::uint32_t op, a, b, c; Ref r; };
@@ -322,16 +392,25 @@ private:
         const Node& n = nodes_[f];
         return n.var == v ? std::pair<Ref, Ref>{n.lo, n.hi} : std::pair<Ref, Ref>{f, f};
     }
-    void grow() {
-        std::vector<Ref> t(table_.size() * 2, kNone);
+    void rehash(std::vector<Ref>& t) const {
         const std::size_t mask = t.size() - 1;
         for (Ref r = 2; r < nodes_.size(); ++r) {
             const Node& n = nodes_[r];
+            if (n.var == kFree) continue;
             std::size_t i = hash3(n.var, n.lo, n.hi) & mask;
             while (t[i] != kNone) i = (i + 1) & mask;
             t[i] = r;
         }
+    }
+    void grow() {
+        std::vector<Ref> t(table_.size() * 2, kNone);
+        rehash(t);
         table_.swap(t);
+        // The cache tracks the table; entries are lossy, so growing drops them.
+        if (cache_.size() < cache_max_ && cache_.size() < table_.size()) {
+            cache_.assign(std::min(cache_max_, table_.size()), Entry{0, 0, 0, 0, 0});
+            cmask_ = cache_.size() - 1;
+        }
     }
     Ref permute_rec(Ref f, std::uint32_t op, bool monotone) {
         if (f <= kTrue) return f;
@@ -342,6 +421,32 @@ private:
         const Ref h = permute_rec(n.hi, op, monotone);
         const std::uint32_t v = (*perm_)[n.var];
         r = monotone ? mk(v, l, h) : ite(var(v), h, l);
+        store(op, f, 0, 0, r);
+        return r;
+    }
+    Ref swap_rec(Ref f, std::uint32_t op) {
+        if (f <= kTrue) return f;
+        Ref r;
+        if (lookup(op, f, 0, 0, r)) return r;
+        const std::uint32_t v = top(f);
+        const auto& first = *swap_first_;
+        std::uint32_t a = kTerm;
+        if (first[v]) a = v;
+        else if (v > 0 && first[v - 1]) a = v - 1;
+        if (a == kTerm) {
+            const Ref l = swap_rec(lo(f), op);
+            r = mk(v, l, swap_rec(hi(f), op));
+        } else {
+            const std::uint32_t b = a + 1;
+            const auto [f0, f1] = cof(f, a);
+            const auto [f00, f01] = cof(f0, b);
+            const auto [f10, f11] = cof(f1, b);
+            // g(a=i, b=j) = f(a=j, b=i)
+            const Ref g00 = swap_rec(f00, op), g01 = swap_rec(f10, op);
+            const Ref g10 = swap_rec(f01, op), g11 = swap_rec(f11, op);
+            const Ref l = mk(b, g00, g01);
+            r = mk(a, l, mk(b, g10, g11));
+        }
         store(op, f, 0, 0, r);
         return r;
     }
@@ -369,12 +474,16 @@ private:
     }
 
     std::uint32_t nvars_;
+    std::size_t cache_max_;
+    Ref free_{kNone};
+    std::size_t live_{2}, peak_live_{2}, created_since_gc_{0}, kept_at_gc_{0}, gc_runs_{0};
     std::vector<Node> nodes_;
     std::vector<Ref> table_;
     std::vector<Entry> cache_;
     std::size_t cmask_{0};
     std::uint32_t perm_epoch_{0};
     const std::vector<std::uint32_t>* perm_{nullptr};
+    const std::vector<std::uint8_t>* swap_first_{nullptr};
 };
 
 } // namespace bdd

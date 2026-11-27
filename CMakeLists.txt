@@ -32,6 +32,9 @@ set(CORE_SOURCES
     src/signature.cpp
     src/strategy.cpp
     src/symmetry.cpp
+    src/symdel.cpp
+    src/symheur.cpp
+    src/symsearch.cpp
     src/parallel.cpp
     src/validator.cpp
     src/temporal.cpp
@@ -51,7 +54,7 @@ target_include_directories(epistemic_planner PRIVATE include)
 target_link_libraries(epistemic_planner PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
 
 # Symbolic (BDD) states: differential replay against the explicit engine.
-add_executable(symcheck tools/symcheck.cpp src/symdel.cpp ${CORE_SOURCES})
+add_executable(symcheck tools/symcheck.cpp ${CORE_SOURCES})
 if(ALETHEIA_NATIVE)
   target_compile_options(symcheck PRIVATE -march=native)
 endif()
@@ -135,6 +138,12 @@ if(ALETHEIA_TESTS)
   target_compile_definitions(temporal_search_test PRIVATE
     TEMPORAL_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/temporal")
   add_test(NAME temporal_search COMMAND temporal_search_test)
+
+  add_executable(symbolic_test tests/symbolic/symbolic_test.cpp ${CORE_SOURCES})
+  target_include_directories(symbolic_test PRIVATE include)
+  target_link_libraries(symbolic_test PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
+  target_compile_definitions(symbolic_test PRIVATE SYMBOLIC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME symbolic COMMAND symbolic_test)
 
   # Not a test: the temporal planner's evaluation, one task at a time.
   add_executable(temporal_eval tools/temporal_eval.cpp ${CORE_SOURCES})

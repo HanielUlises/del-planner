@@ -46,6 +46,15 @@ public:
     bool preferred(const EpistemicState& s, const PlanningTask& task,
                    std::vector<ActionIdx>& out) const override;
 
+    // The same estimates from the facts that hold initially, given as one flag
+    // per fact formula: fact f holds iff fact_formulas()[f] is true at some
+    // designated world (null entries are never initial). The symbolic search
+    // computes the flags on BDDs and shares everything else.
+    [[nodiscard]] const std::vector<FormulaPtr>& fact_formulas() const noexcept { return facts_; }
+    [[nodiscard]] std::vector<std::uint8_t> initial_facts(const EpistemicState& s) const;
+    [[nodiscard]] float estimate(const std::vector<std::uint8_t>& init) const;
+    bool preferred_from(const std::vector<std::uint8_t>& init, std::vector<ActionIdx>& out) const;
+
 private:
     enum class Kind : std::uint8_t { True, False, Fact, And, Or };
 
@@ -69,6 +78,8 @@ private:
     // Cost fixpoint at s; supporter[f] is the operator giving fact f its cost,
     // or -1 when initial or derived.
     std::uint32_t costs(const EpistemicState& s, std::vector<std::int32_t>& fc,
+                        std::vector<std::int32_t>& rc, std::vector<std::int32_t>* supporter) const;
+    std::uint32_t costs(const std::vector<std::uint8_t>& init, std::vector<std::int32_t>& fc,
                         std::vector<std::int32_t>& rc, std::vector<std::int32_t>* supporter) const;
     // Relaxed plan backchained from the goal; returns its operator count and
     // appends to `helpful` the actions of operators applicable now.

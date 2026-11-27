@@ -356,16 +356,30 @@ void KnowledgeRelaxationHeuristic::prune() {
         if (!fact_needed[f]) { facts_[f] = nullptr; derived_[f] = -1; }
 }
 
+std::vector<std::uint8_t> KnowledgeRelaxationHeuristic::initial_facts(const EpistemicState& s) const {
+    std::vector<std::uint8_t> init(facts_.size(), 0);
+    const auto des = s.designated_bits();
+    for (std::size_t f = 0; f < facts_.size(); ++f)
+        if (facts_[f] && bits::intersects(des, s.sat(*facts_[f]))) init[f] = 1;
+    return init;
+}
+
 std::uint32_t KnowledgeRelaxationHeuristic::costs(const EpistemicState& s, std::vector<std::int32_t>& fc,
+                                         std::vector<std::int32_t>& rc,
+                                         std::vector<std::int32_t>* supporter) const {
+    return costs(initial_facts(s), fc, rc, supporter);
+}
+
+std::uint32_t KnowledgeRelaxationHeuristic::costs(const std::vector<std::uint8_t>& init,
+                                         std::vector<std::int32_t>& fc,
                                          std::vector<std::int32_t>& rc,
                                          std::vector<std::int32_t>* supporter) const {
     fc.assign(facts_.size(), kInf);
     rc.assign(reqs_.size(), kInf);
     if (supporter) supporter->assign(facts_.size(), -1);
 
-    const auto des = s.designated_bits();
     for (std::size_t f = 0; f < facts_.size(); ++f)
-        if (facts_[f] && bits::intersects(des, s.sat(*facts_[f]))) fc[f] = 0;
+        if (init[f]) fc[f] = 0;
 
     const auto eval = [&] {
         for (std::size_t r = 0; r < reqs_.size(); ++r) {
@@ -490,22 +504,31 @@ KnowledgeRelaxationHeuristic::analyse(const EpistemicState& s) const {
 
 float KnowledgeRelaxationHeuristic::operator()(const EpistemicState& s,
                                                const PlanningTask&) const {
+    return estimate(initial_facts(s));
+}
+
+float KnowledgeRelaxationHeuristic::estimate(const std::vector<std::uint8_t>& init) const {
     thread_local std::vector<std::int32_t> fc, rc, sup;
     float h = 0.f;
     if (estimate_ == Estimate::Add) {
-        costs(s, fc, rc, nullptr);
+        costs(init, fc, rc, nullptr);
         for (std::uint32_t r : goal_) h += rc[r] >= kInf ? kDead : float(rc[r]);
         return h;
     }
-    costs(s, fc, rc, &sup);
+    costs(init, fc, rc, &sup);
     for (std::uint32_t r : goal_) h += rc[r] >= kInf ? kDead : 0.f;
     return h + float(extract(rc, sup, nullptr));
 }
 
 bool KnowledgeRelaxationHeuristic::preferred(const EpistemicState& s, const PlanningTask&,
                                              std::vector<ActionIdx>& out) const {
+    return preferred_from(initial_facts(s), out);
+}
+
+bool KnowledgeRelaxationHeuristic::preferred_from(const std::vector<std::uint8_t>& init,
+                                                  std::vector<ActionIdx>& out) const {
     thread_local std::vector<std::int32_t> fc, rc, sup;
-    costs(s, fc, rc, &sup);
+    costs(init, fc, rc, &sup);
     out.clear();
     extract(rc, sup, &out);
     std::sort(out.begin(), out.end());

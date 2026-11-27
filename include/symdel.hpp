@@ -20,9 +20,11 @@
 #include "action.hpp"
 #include "formula.hpp"
 #include "state.hpp"
+#include "symmetry.hpp"
 #include "task.hpp"
 
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace sym {
@@ -36,9 +38,23 @@ struct SymState {
     std::unordered_map<std::uint32_t, Ref> memo;   // sat(), by formula id
 };
 
+struct EngineStats {
+    std::size_t contractions{0};
+    std::size_t fixpoint_skipped{0};     // contractions with H = ∅ after projection
+    std::size_t fixpoint_runs{0};        // contractions that ran the E fixpoint
+    std::size_t fixpoint_rounds{0};
+    std::size_t equivalence_checks{0};   // bisimilarity tests on disjoint unions
+    std::size_t gc_freed{0};
+    std::size_t box_hits{0};             // [i]φ reused from another state
+    double t_reach{0}, t_fixpoint{0}, t_quotient{0};   // contraction phases, seconds
+};
+
+class Relaxation;
+
 class Engine {
 public:
     static constexpr std::uint32_t kMaxHidden = 512;
+    friend class Relaxation;
 
     explicit Engine(const PlanningTask& t, bool hidden_on_top = true);
 
@@ -70,9 +86,40 @@ public:
     std::size_t nodes(const SymState& s) const;
     EpistemicState explicit_state(const SymState& s);   // enumerate [[S]]
 
+    // Garbage collection. Every BDD a caller still needs must be a root: the
+    // engine adds its own; sat() memos of states not listed are dangling after.
+    static void roots_of(const SymState& s, std::vector<Ref>& out);
+    std::size_t gc(std::vector<Ref> roots);
+
+    // Identity of contracted (normalised) states.
+    //   fingerprint  structural 128-bit digest of (|H|, θ, δ, Ω): equal for
+    //                equal encodings, which for H = ∅ are canonical, so there it
+    //                decides bisimilarity (up to hash collisions)
+    //   invariant    digest of the projections ∃H.θ, ∃H.δ, ∃H.Ω_i: equal for
+    //                bisimilar states whatever their hidden encoding
+    //   equivalent   exact: bisimilarity on the disjoint union (same fixpoint
+    //                as contraction), for states whose invariants agree
+    Fingerprint fingerprint(const SymState& s);
+    Fingerprint invariant(const SymState& s);
+    bool equivalent(const SymState& a, const SymState& b);
+
+    // True when renaming agents by the swap (and atoms by sw.atom) maps s onto
+    // itself, up to bisimilarity: node equality for H = ∅, the invariant and
+    // then equivalent() otherwise.
+    bool fixes(const SymState& s, const AgentSymmetry::Swap& sw);
+
     std::size_t reencode_limit = 4096;
+    EngineStats stats;
 
 private:
+    // Projects away hidden slots determined by the other variables on θ (an
+    // isomorphism); afterwards H = ∅ iff the model is valuation-injective.
+    void drop_determined(SymState& q);
+    // Maximal bisimulation E(x, y) of the model, designation counted as an atom.
+    Ref bisimulation(const std::vector<std::uint32_t>& hid, Ref theta, Ref delta,
+                     const std::vector<Ref>& om);
+    std::pair<std::uint64_t, std::uint64_t> shash(Ref r);
+
     std::uint32_t av(std::uint32_t p, unsigned c) const   // atom p, copy c
         { return htop_ ? 3 * kMaxHidden + 3 * p + c : 3 * p + c; }
     std::uint32_t hv(std::uint32_t k, unsigned c) const   // hidden slot k, copy c
@@ -89,8 +136,21 @@ private:
     bool htop_;
     bdd::Manager m_;
     // Renamings over all variables (unused variables map harmlessly).
-    std::vector<std::uint32_t> XY_, YX_, YU_, SWAP_, XY_UX_, X_U_;
+    std::vector<std::uint32_t> XY_, YX_, YU_, SWAP_, XY_UX_, X_U_, XY_YU_;
+    std::vector<std::uint8_t> XYPAIR_;   // x copies: swap_adjacent transposes x <-> y
     Ref eqP_{bdd::kTrue};        // ∧_p x_p <-> y_p
+    std::unordered_map<Ref, std::pair<std::uint64_t, std::uint64_t>> hmemo_;
+    struct BoxKey {
+        Ref om, ext, theta;
+        bool operator==(const BoxKey&) const = default;
+    };
+    struct BoxHash {
+        std::size_t operator()(const BoxKey& k) const noexcept {
+            return std::size_t(bits::mix64((std::uint64_t(k.om) << 32 | k.ext) ^ bits::mix64(k.theta)));
+        }
+    };
+    std::unordered_map<BoxKey, Ref, BoxHash> box_memo_;
+    std::uint64_t hmemo_epoch_{~std::uint64_t{0}};
 };
 
 } // namespace sym
