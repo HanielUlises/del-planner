@@ -197,6 +197,42 @@ TEST(gc_preserves_rooted_states) {
         CHECK(bisim_contract(eng.explicit_state(S[i])).fingerprint() == R[2 * i].state.fingerprint());
 }
 
+// The depth-one certificate and the fixpoint seeded from depth-one pairs give
+// the same quotient as the plain fixpoint, and the relabelling test never
+// claims an isomorphism that the explicit canonical forms deny.
+TEST(certificate_and_relabelling_agree_with_fixpoint) {
+    std::size_t certified = 0, relabelled = 0, n = 0;
+    for (const auto& f : fixtures()) {
+        const PlanningTask t = load(f);
+        const auto R = explore(t, 50);
+        sym::Engine fast(t), plain(t);
+        plain.minimality_certificate = false;
+        std::vector<sym::SymState> U;
+        for (std::size_t i = 1; i < R.size(); ++i) {
+            sym::SymState p1 = fast.contract(fast.from_explicit(R[R[i].parent].state));
+            sym::SymState p2 = plain.contract(plain.from_explicit(R[R[i].parent].state));
+            sym::SymState u1 = fast.contract(fast.update(p1, t.actions[R[i].action]));
+            sym::SymState u2 = plain.contract(plain.update(p2, t.actions[R[i].action]));
+            CHECK_MSG(fast.worlds(u1) == plain.worlds(u2), f);
+            CHECK_MSG(bisim_contract(fast.explicit_state(u1)).fingerprint() ==
+                      bisim_contract(plain.explicit_state(u2)).fingerprint(), f);
+            U.push_back(std::move(u1));
+            ++n;
+        }
+        certified += fast.stats.certified;
+        for (std::size_t i = 0; i < U.size(); ++i)
+            for (std::size_t j = 0; j < U.size(); ++j) {
+                if (i == j || !fast.relabels_onto(U[i], U[j])) continue;
+                ++relabelled;
+                CHECK_MSG(bisim_contract(fast.explicit_state(U[i])).fingerprint() ==
+                          bisim_contract(fast.explicit_state(U[j])).fingerprint(), f);
+            }
+    }
+    std::cout << "  " << n << " contractions, " << certified << " certified; "
+              << relabelled << " pairs shown isomorphic by relabelling\n";
+    CHECK(certified > 0);
+}
+
 // --------------------------------------------------------------- heuristics
 
 TEST(symbolic_kadd_equals_explicit_kadd) {
@@ -241,7 +277,7 @@ TEST(symbolic_hdelta_is_below_explicit_hdelta) {
 // ----------------------------------------------------------------- symmetry
 
 TEST(symbolic_swap_test_matches_explicit_stabiliser) {
-    std::size_t n = 0, fixed = 0;
+    std::size_t n = 0, fixed = 0, relabelled = 0;
     for (const char* f : {"benchmarks/gossip1/problem_1.json", "tests/symbolic/intermediate-gos-05-all.json",
                           "tests/symbolic/hard-gos-04-imp-deceived.json"}) {
         const PlanningTask t = load(f);
@@ -249,8 +285,13 @@ TEST(symbolic_swap_test_matches_explicit_stabiliser) {
         CHECK(!sym.empty());
         const auto R = explore(t, 30);
         sym::Engine eng(t);
-        for (const auto& r : R) {
-            sym::SymState s = eng.contract(eng.from_explicit(r.state));
+        // As in search: successors by symbolic update of symbolic parents.
+        std::vector<sym::SymState> S{eng.contract(eng.from_explicit(R[0].state))};
+        for (std::size_t i = 1; i < R.size(); ++i)
+            S.push_back(eng.contract(eng.update(S[R[i].parent], t.actions[R[i].action])));
+        for (std::size_t i = 0; i < R.size(); ++i) {
+            const auto& r = R[i];
+            sym::SymState& s = S[i];
             for (const auto& sw : sym.swaps) {
                 AgentSymmetry one = sym;
                 one.swaps = {sw};
@@ -260,8 +301,11 @@ TEST(symbolic_swap_test_matches_explicit_stabiliser) {
                 fixed += exp;
             }
         }
+        relabelled += eng.stats.fixes_relabel;
     }
-    std::cout << "  " << n << " (state, swap) pairs, " << fixed << " fixing\n";
+    std::cout << "  " << n << " (state, swap) pairs, " << fixed << " fixing, "
+              << relabelled << " shown by hidden relabelling\n";
+    CHECK(relabelled > 0);
 }
 
 // ------------------------------------------------------------ hybrid search
