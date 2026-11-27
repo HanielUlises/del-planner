@@ -23,6 +23,8 @@
 #include "symmetry.hpp"
 #include "task.hpp"
 
+#include <chrono>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -44,17 +46,33 @@ struct EngineStats {
     std::size_t fixpoint_runs{0};        // contractions that ran the E fixpoint
     std::size_t fixpoint_rounds{0};
     std::size_t equivalence_checks{0};   // bisimilarity tests on disjoint unions
+    std::size_t equivalent_by_relabel{0};   // ... settled by a hidden relabelling
     std::size_t gc_freed{0};
     std::size_t box_hits{0};             // [i]φ reused from another state
+    std::size_t fixes_same{0}, fixes_relabel{0}, fixes_invariant{0}, fixes_equivalent{0}, fixes_rejected{0};   // H != 0 swap tests
     double t_reach{0}, t_fixpoint{0}, t_quotient{0};   // contraction phases, seconds
+    double t_certificate{0};
+    std::size_t certified{0};            // H != 0 contractions proved minimal without the fixpoint
 };
 
 class Relaxation;
+
+struct PhaseTimer {
+    double& acc;
+    std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
+    ~PhaseTimer() { acc += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(); }
+};
 
 class Engine {
 public:
     static constexpr std::uint32_t kMaxHidden = 512;
     friend class Relaxation;
+
+struct PhaseTimer {
+    double& acc;
+    std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
+    ~PhaseTimer() { acc += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(); }
+};
 
     explicit Engine(const PlanningTask& t, bool hidden_on_top = true);
 
@@ -107,8 +125,29 @@ public:
     // itself, up to bisimilarity: node equality for H = ∅, the invariant and
     // then equivalent() otherwise.
     bool fixes(const SymState& s, const AgentSymmetry::Swap& sw);
+    // Sufficient for a ≅ b: a bijection of hidden values maps a's encoding
+    // onto b's. False means "not shown".
+    bool relabels_onto(const SymState& a, const SymState& b);
+
+    // Necessary conditions for fixes(), computed once per state: edges per
+    // agent and worlds per atom. A swap that fixes s preserves both.
+    struct SwapFilter {
+        std::vector<double> edges, atoms;
+        [[nodiscard]] bool admits(const AgentSymmetry::Swap& sw) const {
+            if (edges[sw.a] != edges[sw.b]) return false;
+            for (std::size_t p = 0; p < atoms.size(); ++p) if (atoms[p] != atoms[sw.atom[p]]) return false;
+            return true;
+        }
+    };
+    SwapFilter swap_filter(const SymState& s);
 
     std::size_t reencode_limit = 4096;
+    // When the fixpoint runs: by the pairwise relation E(x,y) (default) or by
+    // signature refinement over block numbers (env SYM_SIGNATURE=1; measured
+    // slower on intermediate gossip, where E stays small).
+    bool signature_refinement = false;
+    // Skip the fixpoint when worlds are told apart at depth one (env SYM_NOCERT=1 disables).
+    bool minimality_certificate = true;
     EngineStats stats;
 
 private:
@@ -117,7 +156,22 @@ private:
     void drop_determined(SymState& q);
     // Maximal bisimulation E(x, y) of the model, designation counted as an atom.
     Ref bisimulation(const std::vector<std::uint32_t>& hid, Ref theta, Ref delta,
-                     const std::vector<Ref>& om);
+                     const std::vector<Ref>& om, Ref E_init = bdd::kFalse);
+    // Pairs of D that agree at depth one: for every agent, the same sets of
+    // (valuation, designated?) among their successors.
+    Ref depth_one_pairs(const std::vector<std::uint32_t>& hid, Ref theta, Ref delta,
+                        const std::vector<Ref>& om, Ref D);
+    Ref same_world(const std::vector<std::uint32_t>& hid, Ref theta);   // identity on theta
+    SymState refine_quotient(const SymState& r);
+    SymState pairwise_quotient(const SymState& r, std::optional<PhaseTimer>& phase, Ref E_init);
+    SymState finish_quotient(SymState q);
+    SymState quotient_by(const SymState& r, Ref E);   // representatives of E's classes
+    // Variables below the three copies, used only by refine_quotient: agent
+    // code a, a copy z of the atoms, block bits l.
+    static constexpr std::uint32_t kBlockBits = 32;
+    std::uint32_t base_{0}, abits_{0};
+    std::uint32_t zv(std::uint32_t p) const { return base_ + abits_ + p; }
+    std::uint32_t lv(std::uint32_t j) const { return base_ + abits_ + na_ + j; }
     std::pair<std::uint64_t, std::uint64_t> shash(Ref r);
 
     std::uint32_t av(std::uint32_t p, unsigned c) const   // atom p, copy c
@@ -136,7 +190,7 @@ private:
     bool htop_;
     bdd::Manager m_;
     // Renamings over all variables (unused variables map harmlessly).
-    std::vector<std::uint32_t> XY_, YX_, YU_, SWAP_, XY_UX_, X_U_, XY_YU_;
+    std::vector<std::uint32_t> XY_, YX_, YU_, SWAP_, XY_UX_, X_U_, XY_YU_, UX_, UY_;
     std::vector<std::uint8_t> XYPAIR_;   // x copies: swap_adjacent transposes x <-> y
     Ref eqP_{bdd::kTrue};        // ∧_p x_p <-> y_p
     std::unordered_map<Ref, std::pair<std::uint64_t, std::uint64_t>> hmemo_;

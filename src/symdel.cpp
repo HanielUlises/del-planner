@@ -1,10 +1,13 @@
 #include "symdel.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <chrono>
 #include <optional>
 #include <cmath>
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -40,7 +43,12 @@ Engine::Engine(const PlanningTask& t, bool hidden_on_top)
       na_(static_cast<std::uint32_t>(t.num_atoms())),
       ng_(static_cast<std::uint32_t>(t.num_agents())),
       htop_(hidden_on_top),
-      m_(3 * (static_cast<std::uint32_t>(t.num_atoms()) + kMaxHidden)) {
+      m_(3 * (static_cast<std::uint32_t>(t.num_atoms()) + kMaxHidden) +
+         bits_for(t.num_agents() + 2) + static_cast<std::uint32_t>(t.num_atoms()) + kBlockBits) {
+    base_ = 3 * (na_ + kMaxHidden);
+    abits_ = bits_for(ng_ + 2);
+    if (const char* e = std::getenv("SYM_SIGNATURE")) signature_refinement = e[0] == '1';
+    if (const char* e = std::getenv("SYM_NOCERT")) minimality_certificate = !(e[0] == '1');
     XY_    = copy_map({{0, 1}});
     YX_    = copy_map({{1, 0}});
     YU_    = copy_map({{1, 2}});
@@ -48,11 +56,14 @@ Engine::Engine(const PlanningTask& t, bool hidden_on_top)
     XY_UX_ = copy_map({{0, 2}, {1, 0}});
     X_U_   = copy_map({{0, 2}});
     XY_YU_ = copy_map({{0, 1}, {1, 2}});
+    UX_    = copy_map({{2, 0}});
+    UY_    = copy_map({{2, 1}});
     XYPAIR_.assign(m_.num_vars(), 0);
     for (std::uint32_t p = 0; p < na_; ++p) XYPAIR_[av(p, 0)] = 1;
     for (std::uint32_t k = 0; k < kMaxHidden; ++k) XYPAIR_[hv(k, 0)] = 1;
     for (std::uint32_t p = na_; p-- > 0;)
         eqP_ = m_.band(eqP_, m_.biff(m_.var(av(p, 0)), m_.var(av(p, 1))));
+
 }
 
 std::vector<std::uint32_t> Engine::copy_map(std::initializer_list<std::pair<unsigned, unsigned>> mp) const {
@@ -333,7 +344,7 @@ void Engine::drop_determined(SymState& q) {
 }
 
 Ref Engine::bisimulation(const std::vector<std::uint32_t>& hid, Ref theta, Ref delta,
-                         const std::vector<Ref>& om) {
+                         const std::vector<Ref>& om, Ref E_init) {
     // E is symmetric (E_0 is, and each round intersects with Forth and its
     // transpose), so E(u,x) = E(x,u), an order-preserving relabelling (copies
     // are interleaved per variable, x < y < u) instead of an ITE rebuild.
@@ -342,7 +353,9 @@ Ref Engine::bisimulation(const std::vector<std::uint32_t>& hid, Ref theta, Ref d
     // per agent and measured slower than transposing Forth.
     const Ref X = vars(hid, 0), U = vars(hid, 2);
     const Ref tt = m_.band(theta, m_.permute(theta, XY_, true));
-    Ref E = m_.band(m_.band(tt, eqP_), m_.biff(delta, m_.permute(delta, XY_, true)));
+    // Any symmetric start that contains the maximal bisimulation will do.
+    Ref E = E_init != kFalse ? E_init
+                             : m_.band(m_.band(tt, eqP_), m_.biff(delta, m_.permute(delta, XY_, true)));
     std::vector<Ref> om_sw(ng_), om_xu(ng_);
     for (AgentIdx g = 0; g < ng_; ++g) {
         om_sw[g] = m_.swap_adjacent(om[g], XYPAIR_);  // R(y -> x)
@@ -364,13 +377,6 @@ Ref Engine::bisimulation(const std::vector<std::uint32_t>& hid, Ref theta, Ref d
     return E;
 }
 
-namespace {
-struct PhaseTimer {
-    double& acc;
-    std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-    ~PhaseTimer() { acc += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(); }
-};
-}
 
 SymState Engine::contract(const SymState& s) {
     ++stats.contractions;
@@ -400,12 +406,170 @@ SymState Engine::contract(const SymState& s) {
     //    is the model itself and the fixpoint is skipped.
     drop_determined(r);
     if (r.hid.empty()) { ++stats.fixpoint_skipped; return r; }
-    ++stats.fixpoint_runs;
 
+    SymState q;
+    Ref E_init = kFalse;
+    if (minimality_certificate) {
+        // Pairs of distinct worlds with equal valuation and designation that
+        // depth one does not tell apart; when there are none, the model is
+        // its own quotient. Otherwise the fixpoint starts from them.
+        phase.emplace(stats.t_certificate);
+        const Ref tt = m_.band(r.theta, m_.permute(r.theta, XY_, true));
+        const Ref same = same_world(r.hid, r.theta);
+        const Ref D0 = m_.bdiff(m_.band(m_.band(tt, eqP_), m_.biff(r.delta, m_.permute(r.delta, XY_, true))), same);
+        const Ref D = depth_one_pairs(r.hid, r.theta, r.delta, r.om, D0);
+        if (D == kFalse) {
+            ++stats.certified;
+            phase.emplace(stats.t_quotient);
+            return finish_quotient(std::move(r));
+        }
+        E_init = m_.bor(same, D);
+    }
+    ++stats.fixpoint_runs;
+    if (signature_refinement) {
+        phase.emplace(stats.t_fixpoint);
+        q = refine_quotient(r);
+        phase.emplace(stats.t_quotient);
+    } else {
+        q = pairwise_quotient(r, phase, E_init);
+    }
+    return finish_quotient(std::move(q));
+}
+
+// Minimality certificate. After projection every hidden bit separates some
+// pair of worlds with equal valuations. Two worlds that differ in their
+// valuation, their designation, or, for some agent i, in the set of pairs
+// (valuation, designated?) of their R_i-successors are not bisimilar; if
+// every pair of distinct worlds with the same valuation and designation
+// differs in that way, the maximal bisimulation is the identity and the
+// model is already its own quotient. The successor sets quantify the
+// successors' hidden bits away first, so the comparison is between functions
+// of a world and a valuation (copies x, y and the atoms of u), not between
+// worlds of three copies. Returns false when it cannot decide; the fixpoint
+// then runs as before.
+Ref Engine::depth_one_pairs(const std::vector<std::uint32_t>& hid, Ref theta, Ref delta,
+                            const std::vector<Ref>& om, Ref D) {
+    if (D == kFalse) return D;
+    const Ref YH = vars(hid, 1, false);
+    std::vector<std::uint32_t> up;
+    for (std::uint32_t p = 0; p < na_; ++p) up.push_back(av(p, 2));
+    const Ref UP = m_.varset(up);
+    const Ref delta_y = m_.permute(delta, XY_, true);
+    const Ref theta_y = m_.permute(theta, XY_, true);
+    for (AgentIdx g = 0; g < ng_; ++g)
+        for (int des = 1; des >= 0; --des) {
+            const Ref S = m_.and_exists(om[g], des ? delta_y : m_.bdiff(theta_y, delta_y), YH);   // S(x, y_P)
+            const Ref Sxu = m_.permute(S, YU_, true);                  // S(x, u_P)
+            const Ref Syu = m_.permute(S, XY_YU_, true);               // S(y, u_P)
+            D = m_.bdiff(D, m_.and_exists(D, m_.bxor(Sxu, Syu), UP));
+            if (D == kFalse) return D;
+        }
+    return D;
+}
+
+Ref Engine::same_world(const std::vector<std::uint32_t>& hid, Ref theta) {
+    Ref sameH = kTrue;
+    for (std::uint32_t k : hid) sameH = m_.band(sameH, m_.biff(m_.var(hv(k, 0)), m_.var(hv(k, 1))));
+    return m_.band(m_.band(theta, eqP_), sameH);
+}
+
+// Coarsest bisimulation by signature refinement (as in BDD-based bisimulation
+// minimisation, Wimmer et al. 2006). The partition is a function L(x, l)
+// from worlds to block numbers, with the block bits l below every x
+// variable; a block is (valuation, l), so l need not separate valuations.
+// The signature of x lists, over the bits (a, z, l) below x:
+//   a = SELF, l = L(x)                 its own block (so rounds only refine)
+//   a = DES                            whether it is designated
+//   a = i, z = V(y), l = L(y)          the block of each R_i-successor y
+// Equal signatures are equal sub-BDDs at the first node below the x levels,
+// so one pass over the signature's x part numbers the new blocks. No relation
+// over two copies of the worlds is built, and no product over three.
+SymState Engine::refine_quotient(const SymState& r) {
+    auto acode = [&](std::uint32_t v) {
+        std::vector<std::pair<std::uint32_t, bool>> lits;
+        for (std::uint32_t j = 0; j < abits_; ++j) lits.push_back({base_ + j, bool((v >> j) & 1u)});
+        return m_.cube(std::move(lits));
+    };
+    auto lcube = [&](std::uint32_t id, std::uint32_t nbits) {
+        std::vector<std::pair<std::uint32_t, bool>> lits;
+        for (std::uint32_t j = 0; j < nbits; ++j) lits.push_back({lv(j), bool((id >> j) & 1u)});
+        return m_.cube(std::move(lits));
+    };
+    std::vector<std::pair<std::uint32_t, bool>> zl;
+    for (std::uint32_t p = 0; p < na_; ++p) zl.push_back({zv(p), false});
+    const Ref zero_z = m_.cube(zl);
+    for (std::uint32_t j = 0; j < kBlockBits; ++j) zl.push_back({lv(j), false});
+    const Ref zero_zl = m_.cube(zl);
+
+    // G_i(x, z, y_H) = Ω_i with the successor's valuation moved to z.
+    std::vector<std::uint32_t> yz(m_.num_vars()), lz(m_.num_vars());
+    for (std::uint32_t v = 0; v < yz.size(); ++v) yz[v] = lz[v] = v;
+    for (std::uint32_t p = 0; p < na_; ++p) { yz[av(p, 1)] = zv(p); lz[av(p, 0)] = zv(p); }
+    for (std::uint32_t k : r.hid) lz[hv(k, 0)] = hv(k, 1);
+    std::vector<Ref> G(ng_);
+    for (AgentIdx g = 0; g < ng_; ++g) G[g] = m_.permute(r.om[g], yz, false);
+    const Ref YH = vars(r.hid, 1, false);
+    const Ref des_term = m_.band(acode(ng_ + 1), m_.band(r.delta, zero_zl));
+    const Ref self_code = m_.band(acode(ng_), zero_z);
+    std::vector<Ref> agent_code(ng_);
+    for (AgentIdx g = 0; g < ng_; ++g) agent_code[g] = acode(g);
+
+    Ref L = m_.band(r.theta, lcube(0, kBlockBits));
+    std::size_t count = 1;
+    while (true) {
+        ++stats.fixpoint_rounds;
+        const Ref Lz = m_.permute(L, lz, false);              // L(y_H, z, l)
+        Ref sig = m_.bor(des_term, m_.band(self_code, L));
+        for (AgentIdx g = 0; g < ng_; ++g)
+            sig = m_.bor(sig, m_.band(agent_code[g], m_.and_exists(G[g], Lz, YH)));
+        std::unordered_map<Ref, std::uint32_t> ids;
+        std::unordered_map<Ref, Ref> memo;
+        std::function<Ref(Ref)> number = [&](Ref f) -> Ref {
+            if (f == kFalse) return kFalse;
+            if (f == kTrue || m_.top(f) >= base_) {
+                const auto [it, fresh] = ids.try_emplace(f, static_cast<std::uint32_t>(ids.size()));
+                if (ids.size() >= (std::size_t(1) << kBlockBits)) throw std::runtime_error("too many blocks");
+                return lcube(it->second, kBlockBits);
+            }
+            if (auto it = memo.find(f); it != memo.end()) return it->second;
+            const Ref l = number(m_.lo(f));
+            const Ref out = m_.mk(m_.top(f), l, number(m_.hi(f)));
+            memo.emplace(f, out);
+            return out;
+        };
+        const Ref Ln = number(sig);
+        if (ids.size() == count) break;          // a bijection on blocks: stable
+        count = ids.size();
+        L = Ln;
+    }
+
+    // Quotient as in the pairwise version, with E read off the final blocks
+    // once. Block numbers as the new hidden encoding would discard the
+    // structure of the old one (event codes, old values) and measured 15x
+    // larger relations.
+    std::vector<std::uint32_t> lvars;
+    for (std::uint32_t j = 0; j < kBlockBits; ++j) lvars.push_back(lv(j));
+    const Ref LV = m_.varset(lvars);
+    // Bit j of x's block, β_j(x) = ∃l. L(x,l) ∧ l_j; then same block is a
+    // conjunction of equivalences between interleaved copies. (A relational
+    // product over l, with the block bits below both copies, costs |L|^2.)
+    Ref E = m_.band(eqP_, m_.band(r.theta, m_.permute(r.theta, XY_, true)));
+    for (std::uint32_t j = 0; j < bits_for(count); ++j) {
+        const Ref b = m_.exists(m_.band(L, m_.var(lv(j))), LV);
+        E = m_.band(E, m_.biff(b, m_.permute(b, XY_, true)));
+    }
+    return quotient_by(r, E);
+}
+
+SymState Engine::pairwise_quotient(const SymState& r, std::optional<PhaseTimer>& phase, Ref E_init) {
     // 3. maximal bisimulation E(x,y), a greatest fixpoint
     phase.emplace(stats.t_fixpoint);
-    const Ref E = bisimulation(r.hid, r.theta, r.delta, r.om);
+    const Ref E = bisimulation(r.hid, r.theta, r.delta, r.om, E_init);
     phase.emplace(stats.t_quotient);
+    return quotient_by(r, E);
+}
+
+SymState Engine::quotient_by(const SymState& r, Ref E) {
     const Ref Y = vars(r.hid, 1), U = vars(r.hid, 2);
 
     // 4. one representative per class: the least hidden assignment
@@ -424,7 +588,10 @@ SymState Engine::contract(const SymState& s) {
     q.delta = m_.band(r.delta, rep);
     for (AgentIdx g = 0; g < ng_; ++g)
         q.om.push_back(m_.band(rr, m_.and_exists(m_.permute(r.om[g], YU_, true), E_uy, U)));
+    return q;
+}
 
+SymState Engine::finish_quotient(SymState q) {
     // 5. drop hidden slots determined by the other variables on theta
     drop_determined(q);
 
@@ -556,6 +723,7 @@ Fingerprint Engine::invariant(const SymState& s) {
 bool Engine::equivalent(const SymState& a, const SymState& b) {
     if (a.hid.empty() && b.hid.empty()) return fingerprint(a) == fingerprint(b);
     ++stats.equivalence_checks;
+    if (relabels_onto(a, b)) { ++stats.equivalent_by_relabel; return true; }
     // Disjoint union: both on slots 0..m-1 (padded with zeros), tag slot m.
     const std::uint32_t m = static_cast<std::uint32_t>(std::max(a.hid.size(), b.hid.size()));
     std::vector<std::uint32_t> hid;
@@ -573,14 +741,83 @@ bool Engine::equivalent(const SymState& a, const SymState& b) {
     std::vector<Ref> om(ng_);
     for (AgentIdx g = 0; g < ng_; ++g)
         om[g] = m_.bor(m_.band(m_.band(a.om[g], ax), ay), m_.band(m_.band(b.om[g], bx), by));
-    const Ref E = bisimulation(hid, theta, delta, om);
-    // Both sides are contracted, so a total bisimulation between them is an
-    // isomorphism of the quotients.
+    // Both sides are contracted: within a side only equal worlds are
+    // bisimilar. Across, candidates must agree at depth one; a world left
+    // without any candidate decides the question at once.
     const Ref Y = vars(hid, 1);
+    const Ref tag_x = m_.var(hv(m, 0)), tag_y = m_.var(hv(m, 1));
+    const Ref tt = m_.band(theta, m_.permute(theta, XY_, true));
+    const Ref cross = m_.band(m_.band(m_.band(tt, eqP_), m_.biff(delta, m_.permute(delta, XY_, true))),
+                              m_.bxor(tag_x, tag_y));
+    const Ref D = depth_one_pairs(hid, theta, delta, om, cross);
+    const Ref has = m_.exists(D, Y);
+    if (!m_.subset(theta, has)) return false;
+    const Ref E = bisimulation(hid, theta, delta, om, m_.bor(same_world(hid, theta), D));
+    // A total bisimulation between them is an isomorphism of the quotients.
     const Ref a_matched = m_.and_exists(E, m_.permute(tb, XY_, true), Y);
     if (!m_.subset(ta, a_matched)) return false;
     const Ref b_matched = m_.and_exists(E, m_.permute(ta, XY_, true), Y);
     return m_.subset(tb, b_matched);
+}
+
+Engine::SwapFilter Engine::swap_filter(const SymState& s) {
+    SwapFilter f;
+    const std::vector<std::uint32_t> xs = xvars(s.hid);
+    std::vector<std::uint32_t> xys = xs;
+    for (std::uint32_t v : xs) xys.push_back(v + 1);
+    for (Ref o : s.om) f.edges.push_back(m_.count(o, xys));
+    for (std::uint32_t p = 0; p < na_; ++p) f.atoms.push_back(m_.count(m_.band(s.theta, m_.var(av(p, 0))), xs));
+    return f;
+}
+
+// Sufficient test for a ≅ b on one set of hidden slots: worlds of a and b
+// that agree at depth one (valuation, designation, and per agent the sets of
+// successor valuations) are candidate partners. When the candidates, read on
+// the hidden bits alone, form a bijection π of hidden values, renaming a's
+// hidden bits by π and obtaining b's four BDDs proves an isomorphism. False
+// means "not shown", not "not bisimilar".
+bool Engine::relabels_onto(const SymState& a, const SymState& b) {
+    if (a.hid != b.hid) return false;
+    const Ref YH = vars(a.hid, 1, false), XH = vars(a.hid, 0, false);
+    std::vector<std::uint32_t> up, pp;
+    for (std::uint32_t p = 0; p < na_; ++p) { up.push_back(av(p, 2)); pp.push_back(av(p, 0)); pp.push_back(av(p, 1)); }
+    const Ref UP = m_.varset(up), PXY = m_.varset(pp);
+    const Ref ay = m_.permute(a.theta, XY_, true), by = m_.permute(b.theta, XY_, true);
+    const Ref ady = m_.permute(a.delta, XY_, true), bdy = m_.permute(b.delta, XY_, true);
+    Ref D = m_.band(m_.band(m_.band(a.theta, by), eqP_), m_.biff(a.delta, bdy));
+    for (AgentIdx g = 0; g < ng_ && D != kFalse; ++g)
+        for (int des = 1; des >= 0 && D != kFalse; --des) {
+            const Ref Sa = m_.and_exists(a.om[g], des ? ady : m_.bdiff(ay, ady), YH);
+            const Ref Sb = m_.and_exists(b.om[g], des ? bdy : m_.bdiff(by, bdy), YH);
+            const Ref diff = m_.bxor(m_.permute(Sa, YU_, true), m_.permute(Sb, XY_YU_, true));
+            D = m_.bdiff(D, m_.and_exists(D, diff, UP));
+        }
+    if (D == kFalse) return false;
+    const Ref M = m_.exists(D, PXY);                        // M(x_H, y_H)
+    // π must be a bijection: functional and injective.
+    Ref neqYU = kFalse, neqXU = kFalse;
+    for (std::uint32_t k : a.hid) {
+        neqYU = m_.bor(neqYU, m_.bxor(m_.var(hv(k, 1)), m_.var(hv(k, 2))));
+        neqXU = m_.bor(neqXU, m_.bxor(m_.var(hv(k, 0)), m_.var(hv(k, 2))));
+    }
+    const Ref M_xu = m_.permute(M, YU_, true);              // M(x_H, u_H)
+    if (m_.band(m_.band(M, M_xu), neqYU) != kFalse) return false;
+    const Ref M_uy = m_.permute(M, X_U_, false);            // M(u_H, y_H)
+    if (m_.band(m_.band(M, M_uy), neqXU) != kFalse) return false;
+    // Rename a by π and compare.
+    const auto rel_x = [&](Ref f) {                        // f(x) ↦ f(π⁻¹ x)
+        return m_.permute(m_.and_exists(f, M, XH), YX_, true);
+    };
+    if (rel_x(a.theta) != b.theta || rel_x(a.delta) != b.delta) return false;
+    const Ref M_yu = m_.permute(M, XY_YU_, true);           // M(y_H, u_H)
+    const Ref UH = vars(a.hid, 2, false);
+    for (AgentIdx g = 0; g < ng_; ++g) {
+        const Ref o1 = m_.permute(m_.and_exists(a.om[g], M_xu, XH), UX_, false);   // source renamed
+        const Ref o2 = m_.permute(m_.and_exists(o1, M_yu, YH), UY_, true);         // target renamed
+        (void)UH;
+        if (o2 != b.om[g]) return false;
+    }
+    return true;
 }
 
 bool Engine::fixes(const SymState& s, const AgentSymmetry::Swap& sw) {
@@ -609,9 +846,12 @@ bool Engine::fixes(const SymState& s, const AgentSymmetry::Swap& sw) {
     r.delta = m_.permute(s.delta, perm, false);
     r.om.resize(ng_);
     for (AgentIdx g = 0; g < ng_; ++g) r.om[swapped(g)] = m_.permute(s.om[g], perm, false);
-    if (r.theta == s.theta && r.delta == s.delta && r.om == s.om) return true;
-    if (invariant(r) != invariant(s)) return false;
-    return equivalent(r, s);
+    if (r.theta == s.theta && r.delta == s.delta && r.om == s.om) { ++stats.fixes_same; return true; }
+    if (relabels_onto(r, s)) { ++stats.fixes_relabel; return true; }
+    if (invariant(r) != invariant(s)) { ++stats.fixes_invariant; return false; }
+    const bool eq = equivalent(r, s);
+    ++(eq ? stats.fixes_equivalent : stats.fixes_rejected);
+    return eq;
 }
 
 // ---------------------------------------------------------------- testing

@@ -367,7 +367,8 @@ StateSymmetry stabiliser(const AgentSymmetry& sym, const EpistemicState& s) {
 }
 
 StateSymmetry stabiliser_by(const AgentSymmetry& sym, std::uint32_t num_agents,
-                            const std::function<bool(const AgentSymmetry::Swap&)>& fixes) {
+                            const std::function<bool(const AgentSymmetry::Swap&)>& fixes,
+                            const std::vector<std::uint8_t>* known) {
     std::vector<std::uint32_t> parent(num_agents);
     std::iota(parent.begin(), parent.end(), 0);
     const auto find = [&](std::uint32_t x) {
@@ -375,6 +376,13 @@ StateSymmetry stabiliser_by(const AgentSymmetry& sym, std::uint32_t num_agents,
         return x;
     };
     std::vector<const AgentSymmetry::Swap*> fixing;
+    // Swaps known to fix the state first: they connect agents for free.
+    if (known)
+        for (std::size_t k = 0; k < sym.swaps.size() && k < known->size(); ++k)
+            if ((*known)[k]) {
+                parent[find(sym.swaps[k].a)] = find(sym.swaps[k].b);
+                fixing.push_back(&sym.swaps[k]);
+            }
     for (const auto& sw : sym.swaps) {
         if (find(sw.a) == find(sw.b)) continue;       // already connected
         if (!fixes(sw)) continue;

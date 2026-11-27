@@ -86,8 +86,8 @@ holds `null`. An empty array means the goal already held.
 | `--no-portfolio` | Auto-selected AO\* on sensing tasks keeps the whole budget instead of handing over to replan |
 | `--no-helpful` | GBFS expands every action instead of the relaxed plan's helpful actions first |
 | `--signature` | Print the task's structural signature (topology, fixed-point depths, growth, symmetry) as JSON and exit |
-| `--symbolic` | Hybrid GBFS: states above 4 096 worlds whose valuation is injective are held as BDDs, all others explicitly; see below |
-| `--symbolic-threshold <n>` | World count above which an injective state is symbolic (implies `--symbolic`; 0 = always) |
+| `--symbolic` | GBFS on BDD states: all states when the initial state has ≥ 1 024 worlds, otherwise only large valuation-injective ones; see below |
+| `--symbolic-threshold <n>` | World count above which an injective state is symbolic (implies `--symbolic`, disables the per-run choice; 0 = always) |
 | `--symbolic-hidden-threshold <n>` | The same for states that are not valuation-injective (default 1 048 576) |
 | `--help` | Show usage |
 
@@ -116,16 +116,23 @@ a collapsed belief.
 ### Symbolic search
 
 `--symbolic` runs the same greedy best-first search with a second state
-representation: the BDD engine of [symbolic.md](symbolic.md). A contracted
-state is held symbolically when it has more than `--symbolic-threshold` worlds
-(default 4 096) and no two of its worlds share a valuation, or more than
-`--symbolic-hidden-threshold` worlds (default 2^20); otherwise explicitly.
-Both tests are bisimulation invariants, so a state always gets the same
-representation and duplicate detection stays exact. The heuristics `kadd` and
-`kff` give the same values on both representations; `hd` and `hdsum` use a
-symbolic h^Δ above the threshold, which is admissible but may be weaker; `ug`
-is also available. The search is linear (GBFS) and does not support
-`--kd45-repair` or `--consistent-beliefs`.
+representation: the BDD engine of [symbolic.md](symbolic.md). It decides once
+per run:
+
+- if the contracted initial state has at least 1 024 worlds (or is a theory
+  too large to materialise), every state is symbolic;
+- otherwise a state is symbolic when it has more than 4 096 worlds and no two
+  of its worlds share a valuation, or more than 2^20 worlds, and explicit
+  otherwise.
+
+Either way a state's representation is a function of the state, so duplicate
+detection stays exact. `--symbolic-threshold` and
+`--symbolic-hidden-threshold` set the two thresholds and turn the per-run
+choice off (both 0: every state symbolic). The heuristics `kadd` and `kff`
+give the same values on both representations; `hd` and `hdsum` use a symbolic
+h^Δ for symbolic states, which is admissible but may be weaker; `ug` is also
+available. The search is linear (GBFS) and does not support `--kd45-repair`
+or `--consistent-beliefs`.
 
 A task whose initial state is a finitary S5 theory (`ground --theory`) is
 materialised only when it fits under the threshold; larger ones start from the

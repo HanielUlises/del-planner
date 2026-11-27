@@ -40,6 +40,13 @@ struct Options {
     // contraction fixpoint slow, while injective states have a canonical,
     // small encoding (the observational states of the notes).
     double      hidden_threshold = 1 << 20;
+    // When the contracted initial state has at least this many worlds, every
+    // state of the run is symbolic (both thresholds 0): states then descend
+    // from symbolic updates, whose hidden bits are structured (event codes,
+    // old values), whereas encoding a large non-injective explicit state
+    // numbers its worlds arbitrarily. 0 disables. The choice is made once per
+    // run, so representations remain a function of the state.
+    double      full_from = 1024;
     std::size_t max_nodes = 0;
     Deadline    deadline  = Deadline::max();
     bool        helpful   = true;
@@ -55,6 +62,8 @@ struct Stats {
     std::size_t hidden_checks{0};          // exact checks run
     std::size_t hidden_closed{0};          // H ≠ ∅ states kept for those checks
     std::size_t symmetric_tests{0};
+    std::size_t symmetric_inherited{0};   // fixing swaps carried from the parent, not tested
+    bool        full_symbolic{false};      // the run chose every state symbolic
     std::size_t gc_runs{0};
     std::size_t peak_bdd_nodes{0};
     std::size_t peak_bdd_bytes{0};

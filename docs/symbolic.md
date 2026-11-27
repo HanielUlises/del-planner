@@ -250,3 +250,132 @@ symbolic engine is slow (intermediate gos-09 with T alone: > 300 s, against
   proof. Measured equal on all 161 test states. It is the root dead-end test
   for symbolic roots (gos-13-all: explicit root test 13 s, symbolic < 0.1 s).
 
+
+## Contraction and symmetry when H ≠ ∅ (2026-11-27)
+
+Branch `symbolic/sigref`. The H ≠ ∅ states (private and semi-private
+announcements, deception) were where the symbolic engine lost: replaying
+intermediate gos-11-all took 9.2 s symbolically against 1.2 s explicitly, 92%
+in the bisimulation fixpoint.
+
+### What the fixpoint was doing
+
+In intermediate gossip, contraction never merges a world: 72 of 72
+contractions on gos-09-all's plan and 110 of 110 on gos-11-all's return the
+model unchanged (hard gos-10-imp: 8 of 9). The fixpoint's two rounds compute
+E_1 and then confirm it; the cost is proving minimality. The BDDs involved
+are small (θ ≈ 200 nodes, Ω_i ≈ 600, E ≤ 9 000); the time is in relational
+products over three copies, whose recursion grows with the product of the
+operand sizes.
+
+### Depth-one certificate
+
+Pairs of distinct worlds with equal valuation and designation are candidates
+for merging. Two of them are not bisimilar if, for some agent i, their sets of
+pairs (successor valuation, successor designated?) differ. These sets are
+S_i(x, y_P) = ∃y_H. Ω_i(x,y) ∧ [δ](y): the successors' hidden bits are
+quantified first, so the comparison is between functions of a world and a
+valuation (x, y and the atoms of u), not between worlds of three copies. If no
+candidate pair survives, the maximal bisimulation is the identity and the
+model is its own quotient (`Engine::depth_one_pairs`, `contract`). Otherwise
+the fixpoint starts from identity ∪ (surviving pairs). That is sound, since
+this relation contains the maximal bisimulation.
+
+Replays (symcheck, same machine, loaded): gos-07 1.79 → 0.45 s, gos-09
+9.2 → 1.9 s, gos-11 37 → 6.1 s; all contractions certified, canonical forms
+still equal to the explicit ones wherever checked.
+
+### Symmetry for H ≠ ∅
+
+With contraction cheap, the swap test dominated search (121 of 146 s on
+intermediate gos-11-all), because each test ran a full bisimulation fixpoint
+on a disjoint union. All 371 tests on gos-09 were positive: proving real
+symmetries was the cost. Three changes:
+
+1. **Inheritance.** If σ fixes P and σ(a) = a, then σ fixes P ⊗ a:
+   σ(P ⊗ a) ≅ σ(P) ⊗ σ(a) = σ(P) ⊗ a ≅ P ⊗ a, since renaming commutes with
+   product update and update preserves bisimilarity. Nodes carry the swaps
+   proved for them; successors inherit those that fix the action, untested,
+   and the stabiliser applies them before testing anything else
+   (`stabiliser_by(..., known)`). Half of the swaps on intermediate gossip.
+2. **Count filter.** Edges per agent and worlds per atom, once per state.
+3. **Hidden relabelling.** Depth-one candidates between σ(s) and s, read on
+   the hidden bits alone, give a relation π on hidden values; if it is a
+   bijection and renaming σ(s)'s hidden bits by π yields s's four BDDs, the
+   two are isomorphic. Exact when it succeeds; otherwise the invariant and the
+   union fixpoint decide as before. It succeeded on every positive test
+   (174/174 gos-09, 338/338 gos-11), so no union fixpoint ran. It also
+   short-cuts `equivalent()` for duplicate detection.
+
+### Results
+
+All-symbolic GBFS+kadd, one thread, against explicit GBFS+kadd, one thread
+(intermediate gossip, n agents, initial state as a finitary S5 theory; n = 11
+is IεPC gos-11-all):
+
+| family | n | max worlds | explicit | symbolic |
+|---|---|---|---|---|
+| intermediate | 11 (IεPC) | 42 637 | 35.9 s, 1.0 GB | 13.6 s, 170 MB |
+| intermediate | 13 | 233 801 | 340 s, 9.2 GB | 59.7 s, 335 MB |
+| intermediate | 15 | 1.2·10^6 | out of memory (14 GB) | 114 s, 337 MB |
+| intermediate | 17 | 6.3·10^6 | — | 292 s, 502 MB |
+| hard (KD45, lies) | 12 (IεPC) | 40 961 | 4.4 s, 251 MB | 1.6 s, 170 MB |
+| hard | 14 | 192 513 | 45 s, 1.7 GB | 2.4 s, 172 MB |
+| hard | 16 | 884 737 | 250 s, 11.4 GB | 4.8 s, 173 MB |
+| hard | 20 | 1.8·10^7 | — | 9.5 s, 340 MB |
+| hard | 24 | 3.4·10^8 | — | 21 s, 355 MB |
+| hard | 32 | 1.2·10^11 | — | 77 s, 507 MB |
+| hard, all deceived | 12 (IεPC) | | 0.50 s | 0.14 s |
+| hard, all deceived | 14 | | 4.0 s | 0.21 s |
+| hard, all deceived | 16 | | 35 s, 207 MB | 0.27 s, 29 MB |
+| hard, all deceived | 20 | | 1 129 s, 3.7 GB | 0.85 s, 52 MB |
+
+Instances beyond the competition's are generated from the IεPC problem files
+(agent lists extended; `~/Documents/ICAPS-2027/exploration/symbolic/hidden/`)
+and grounded with `ground --theory`. Plans up to intermediate n = 15 and
+hard n = 16 replay correctly in the explicit engine (n = 15: 274 s explicit,
+19 s symbolic); all of them replay in the
+symbolic one.
+
+Against deep on deep's own gossip formulation (private tells, mA*), translated
+with `ma2json.py`, plans validated by deep's plan execution: n = 5, deep
+HFS+C_PG 11.4 s, ours 0.04 s; n = 6, deep 226 s (portfolio: no plan), ours
+0.2 s (`exploration/symbolic/deepcmp/`).
+
+Hard gos-12-imp-deceived: 2.5 s symbolic against 4.4 s explicit (each
+includes about 1.8 s of loading). Intermediate gos-09-all, the largest size
+where explicit still wins: 3.7 s against 2.6 s.
+
+### Representation policy
+
+Converting a large *non-injective* explicit state to BDDs numbers its worlds
+arbitrarily (rank within a valuation). The resulting BDDs are large, and
+the run never recovers (intermediate gos-09 with a single threshold of 4 096:
+> 600 s). States produced by symbolic updates have structured hidden bits
+(event codes, old values). `--symbolic` therefore decides once per run: if
+the contracted initial state has at least 1 024 worlds (or the theory is not
+materialised), every state is symbolic; otherwise the hybrid of the previous
+section. On the suite, tasks with ≥ 1 024 initial worlds were already faster
+all-symbolic before these changes (geometric mean 0.71× explicit time over
+10 tasks). Explicit thresholds (`--symbolic-threshold`,
+`--symbolic-hidden-threshold`) disable the per-run choice.
+
+### Negative results
+
+- **Signature refinement** (blocks as numbers on bits below the x levels, as
+  in BDD-based bisimulation minimisation) is correct but not faster here.
+  With block numbers as the new hidden encoding, relations grew 15×
+  (7 603 vs ≈ 500 nodes) because the old encoding's structure is lost. With
+  representatives instead it is even on gos-05 and 2× slower on gos-09. E stays
+  small in these models, so avoiding it buys nothing. Kept behind
+  `SYM_SIGNATURE=1`.
+- **Random parity fingerprints** of successor sets (parity quantification with
+  random functions) almost never separated all pairs. Low-degree
+  functions sum to 0 over subcubes of higher dimension, and knowledge sets are
+  subcubes; with thousands of pairs, some pair collides on its few bits
+  anyway. The exact comparison was as fast; removed.
+- **One product for all agents** (agent code bits below the copies): 175 s
+  instead of 1.4 s on gos-09's certificate; reverted.
+- **Bug found by the sweep:** without `--symbolic`, a theory too large to
+  materialise left an empty initial model, and GBFS reported the empty plan.
+  The planner now refuses such a task.
