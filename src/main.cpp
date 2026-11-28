@@ -120,6 +120,9 @@ static void usage(const char* prog) {
         << "  --symbolic-hidden-threshold N\n"
         << "                 The same for states that are not valuation-injective\n"
         << "                 (default: 1048576)\n"
+        << "  --first-improvement\n"
+        << "                 Symbolic nodes stop at the first successor that improves h\n"
+        << "                 and resume later (implies --symbolic)\n"
         << "  --help         Show this message\n";
 }
 
@@ -144,6 +147,7 @@ int main(int argc, char* argv[]) {
     double symbolic_threshold = 4096;
     double symbolic_hidden = 1 << 20;
     bool symbolic_fixed = false;   // thresholds given: no per-task choice
+    bool first_improvement = false;
     bool kd45_repair  = false;
     bool consistent   = false;
     bool portfolio_on = true;
@@ -183,6 +187,7 @@ int main(int argc, char* argv[]) {
         else if (arg == "--durations" && i+1 < argc) durations_path = argv[++i];
         else if (arg == "--max-concurrency" && i+1 < argc) max_concurrency = std::stoul(argv[++i]);
         else if (arg == "--symbolic")     symbolic_mode     = true;
+        else if (arg == "--first-improvement") { symbolic_mode = true; first_improvement = true; }
         else if (arg == "--symbolic-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_fixed = true; symbolic_threshold = std::stod(argv[++i]); }
         else if (arg == "--symbolic-hidden-threshold" && i+1 < argc) { symbolic_mode = true; symbolic_fixed = true; symbolic_hidden = std::stod(argv[++i]); }
         else if (arg == "--help" || arg == "-h") { usage(argv[0]); return 0; }
@@ -417,6 +422,7 @@ int main(int argc, char* argv[]) {
         so.max_nodes = limit;
         so.deadline  = deadline;
         so.helpful   = helpful_on;
+        so.first_improvement = first_improvement;
         symsearch::Stats ss;
         std::optional<SearchResult> result;
         try {
@@ -435,7 +441,7 @@ int main(int argc, char* argv[]) {
                   << ss.hidden_checks << " checks, " << ss.hidden_closed << " kept)\n"
                   << "[symsearch] contractions " << ss.contractions << " (fixpoint skipped "
                   << ss.fixpoint_skipped << ", run " << ss.fixpoint_runs << ", "
-                  << ss.fixpoint_rounds << " rounds); gc " << ss.gc_runs << " (op-code restarts " << ss.perm_restarts << ")"
+                  << ss.fixpoint_rounds << " rounds); gc " << ss.gc_runs << " (op-code restarts " << ss.perm_restarts << "); resumed " << ss.resumed
                   << "; peak BDD nodes " << ss.peak_bdd_nodes << " (" << ss.peak_bdd_bytes / (1 << 20)
                   << " MiB); max worlds " << ss.max_worlds << "\n"
                   << "[symsearch] time: update " << ss.t_update << " s, contract " << ss.t_contract

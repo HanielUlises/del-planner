@@ -43,6 +43,8 @@ struct Node {
     double         worlds{0};
     // Swaps known to fix this (symbolic) state, by index; empty = unknown.
     std::vector<std::uint8_t> fixing;
+    // First improvement: actions below this index were already applied.
+    ActionIdx      resume{0};
 };
 
 struct QEntry { float h; std::uint32_t g; std::uint32_t idx; };
@@ -118,6 +120,7 @@ private:
     std::vector<sym::SymState> hidden_;
     SearchResult        res_;
     std::vector<std::uint8_t> pending_fix_;   // for the next symbolic node created
+    float last_h_{0.f};                       // h of the last node pushed
 
     float hsym(sym::SymState& s);
     bool  dead_sym(sym::SymState& s, float h);
@@ -172,7 +175,10 @@ bool Search::dead_sym(sym::SymState& s, float h) {
         break;
     }
     Timer tm{st_.t_heuristic};
-    return sym::h_delta(eng_, t_, s) == sym::Relaxation::kInf;
+    // Bounded by the search deadline: one check can outlast it on large tasks
+    // (gossip "all", 64 agents); a check cut short proves nothing.
+    const auto v = sym::h_delta_until(eng_, t_, s, o_.deadline);
+    return v && *v == sym::Relaxation::kInf;
 }
 
 void Search::maybe_gc() {
@@ -187,6 +193,7 @@ void Search::maybe_gc() {
 }
 
 void Search::push(Node n, float h) {
+    last_h_ = h;
     const std::uint32_t g = n.g;
     nodes_.push_back(std::move(n));
     open_.push_back(QEntry{h, g, static_cast<std::uint32_t>(nodes_.size() - 1)});
@@ -550,6 +557,7 @@ std::optional<SearchResult> Search::run(bool helpful, bool& pruned, bool root_ch
                 if (!kept.empty() && kept.size() < cands.size()) { cands.swap(kept); pruned = true; }
             }
             for (ActionIdx ai : cands) {
+                if (ai < nodes_[ci].resume) continue;
                 const Action& act = t_.actions[ai];
                 bool ok;
                 {
@@ -572,12 +580,25 @@ std::optional<SearchResult> Search::run(bool helpful, bool& pruned, bool root_ch
                     u = eng_.contract(u);
                 }
                 any = true;
+                const std::size_t before = nodes_.size();
                 const bool hit = add(std::move(u), ci, ai, g);
                 pending_fix_.clear();
                 if (hit) {
                     res_.plan = plan(static_cast<std::uint32_t>(nodes_.size() - 1));
                     finish();
                     return res_;
+                }
+                if (o_.first_improvement && nodes_.size() > before && last_h_ < cur.h) {
+                    // Back to the open list, to continue after ai when popped again.
+                    P.memo.clear();
+                    nodes_[ci].sy = std::move(P);
+                    nodes_[ci].live = true;
+                    nodes_[ci].resume = ai + 1;
+                    if (use_sym_) nodes_[ci].fixing = std::move(fixed);
+                    open_.push_back(QEntry{cur.h, nodes_[ci].g, ci});
+                    std::push_heap(open_.begin(), open_.end(), Worse{});
+                    ++st_.resumed;
+                    break;
                 }
             }
         }

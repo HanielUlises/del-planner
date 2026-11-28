@@ -50,6 +50,11 @@ struct Options {
     std::size_t max_nodes = 0;
     Deadline    deadline  = Deadline::max();
     bool        helpful   = true;
+    // Symbolic nodes stop generating successors at the first one whose h is
+    // below the parent's, and the parent returns to the open list to resume
+    // after that action. Fewer contractions where most actions improve h;
+    // a different search from the explicit planner's GBFS.
+    bool        first_improvement = false;
 };
 
 struct Stats {
@@ -65,6 +70,7 @@ struct Stats {
     std::size_t symmetric_inherited{0};   // fixing swaps carried from the parent, not tested
     bool        full_symbolic{false};      // the run chose every state symbolic
     std::size_t gc_runs{0};
+    std::size_t resumed{0};            // first improvement: parents put back
     std::size_t perm_restarts{0};      // permutation op codes exhausted, cache dropped
     std::size_t peak_bdd_nodes{0};
     std::size_t peak_bdd_bytes{0};
