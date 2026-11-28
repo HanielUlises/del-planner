@@ -451,20 +451,24 @@ Ref Engine::depth_one_pairs(const std::vector<std::uint32_t>& hid, Ref theta, Re
                             const std::vector<Ref>& om, Ref D) {
     if (D == kFalse) return D;
     const Ref YH = vars(hid, 1, false);
-    std::vector<std::uint32_t> up;
-    for (std::uint32_t p = 0; p < na_; ++p) up.push_back(av(p, 2));
-    const Ref UP = m_.varset(up);
+    const Ref YP = vars({}, 1);
     const Ref delta_y = m_.permute(delta, XY_, true);
     const Ref theta_y = m_.permute(theta, XY_, true);
+    // Pairs of D share their valuation, so they are kept as D'(x_P, x_H, y_H)
+    // and the y_P slot holds the successor's valuation: S(x, y_P) against S
+    // with x_H renamed to y_H. Two copies of the atoms instead of three.
+    std::vector<std::uint32_t> xh_yh(m_.num_vars());
+    for (std::uint32_t v = 0; v < xh_yh.size(); ++v) xh_yh[v] = v;
+    for (std::uint32_t k : hid) xh_yh[hv(k, 0)] = hv(k, 1);
+    Ref Dp = m_.exists(D, YP);
     for (AgentIdx g = 0; g < ng_; ++g)
         for (int des = 1; des >= 0; --des) {
             const Ref S = m_.and_exists(om[g], des ? delta_y : m_.bdiff(theta_y, delta_y), YH);   // S(x, y_P)
-            const Ref Sxu = m_.permute(S, YU_, true);                  // S(x, u_P)
-            const Ref Syu = m_.permute(S, XY_YU_, true);               // S(y, u_P)
-            D = m_.bdiff(D, m_.and_exists(D, m_.bxor(Sxu, Syu), UP));
-            if (D == kFalse) return D;
+            const Ref S2 = m_.permute(S, xh_yh, true);                 // S(x_P, y_H, y_P)
+            Dp = m_.bdiff(Dp, m_.and_exists_xor(Dp, S, S2, YP));
+            if (Dp == kFalse) return Dp;
         }
-    return D;
+    return m_.band(Dp, eqP_);
 }
 
 Ref Engine::same_world(const std::vector<std::uint32_t>& hid, Ref theta) {

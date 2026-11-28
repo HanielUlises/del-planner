@@ -29,6 +29,8 @@ This document describes the design of the current implementation. Three decision
 3. **Contraction produces a canonical form.**  
    Bisimulation contraction assigns world indices in an order determined by the model's structure alone, so bisimilar states serialise identically and duplicate detection reduces to comparing 128-bit fingerprints.
 
+A second state representation, Boolean functions over copies of the vocabulary (§10), takes over when models are too large to hold explicitly: symbolic states with $10^{10}$ worlds and more are updated, contracted and compared exactly, inside the same heuristic search.
+
 Against the previous implementation on the same benchmark set, these changes reduce the largest solved instance from **151 s and 21 GB** of resident memory to **40 ms and 7.3 MB**, and improve AND-OR iteration throughput on an unsolved instance by a factor of **19.8×**.
 
 ---
@@ -322,7 +324,7 @@ The suite provides no headroom for a better heuristic, and it is worth stating w
 
 Search cost grows two orders of magnitude across these instances while the number of expansions stays exactly optimal. The time is spent evaluating nodes — product update and contraction over a 128-world model — not choosing between them. The same holds for the conditional instances: `coin4`'s 629 expansions are almost entirely iterative-deepening re-expansion (its memo ends at 6 solved / 20 refuted entries, and only one action is applicable at the root), not misranking.
 
-The conclusion is that further heuristic work should be deferred behind per-node cost and behind replacing iterative deepening in the AND-OR search (§10). A heuristic can only pay once search is actually branching.
+The conclusion is that further heuristic work should be deferred behind per-node cost and behind replacing iterative deepening in the AND-OR search (§11). A heuristic can only pay once search is actually branching.
 
 ---
 
@@ -417,7 +419,35 @@ what an announcement *is* changed.
 
 ---
 
-## 10. Limitations and further work
+## 10. Symbolic states
+
+Gossip over $n$ agents has $2^n$ worlds in every reachable state, and private communication multiplies them further. Past a few million worlds no explicit representation fits, however compact. `--symbolic` gives GBFS a second representation; the details and measurements are in [docs/symbolic.md](docs/symbolic.md).
+
+**A state is four kinds of BDD.** $S=(H,\theta,\delta,(\Omega_i)_i)$: $\theta(\vec x)$ has one satisfying assignment per world over the atoms and a set $H$ of hidden bits, $\delta$ marks the designated worlds, and $\Omega_i(\vec x,\vec y)$ is agent $i$'s relation, as in the knowledge structures of SMCDEL. Product update adds bits for the event and for changed atoms; preconditions, postconditions and observability are evaluated with $\mathrm{sat}(\Box_i\varphi)=\theta\wedge\neg\exists\vec y.\,\Omega_i\wedge\neg\mathrm{sat}(\varphi)(\vec y)$.
+
+**Identity is exact.** Contraction restricts to the worlds reachable from $\delta$, takes the bisimulation quotient, and drops hidden bits the other variables determine. When no two worlds share a valuation ($H=\emptyset$), bisimilar states have equal ROBDDs, so the closed list holds 128-bit digests as before. Otherwise states are bucketed by invariants and compared exactly. Explicit and symbolic nodes share one open list, and the representation is a function of the state, so duplicates are never missed across the two.
+
+**Contraction without a fixpoint.** Symbolic bisimulation is a greatest fixpoint over pairs of worlds. On the competition's gossip plans it almost never merges anything, yet it took most of the time. If every two distinct worlds with the same valuation and designation differ, for some agent, in the set of (valuation, designated?) pairs of their successors, the model is already minimal. That test needs one relational product per agent over two copies of the atoms. It decides every contraction that merges nothing, and otherwise seeds the fixpoint.
+
+**Symmetry without a fixpoint.** An agent swap that fixes a state and fixes the action also fixes the successor, so nodes inherit proven swaps. The remaining tests are decided by relabelling hidden bits instead of by bisimilarity of a disjoint union.
+
+**Heuristics read only what holds at designated worlds,** so $k_{add}$ and $k_{ff}$ are equal on both representations and the hybrid search expands the same nodes as the explicit one. $h^\Delta$ has a symbolic version that is admissible and sound for dead ends.
+
+**First improvement.** With `--first-improvement`, a symbolic node stops at the first successor that improves $h$ and returns to the open list. When every successor costs an update and a contraction of a model with $10^9$ worlds, this skips the siblings that GBFS would generate and never expand.
+
+| task (GBFS, $k_{add}$, one thread) | explicit | symbolic |
+|---|---|---|
+| IεPC intermediate gossip, $n=15$ | out of memory | 42 s (first improvement) |
+| IεPC intermediate gossip, $n=21$ ($1.5\cdot10^8$ worlds) | — | 485 s (first improvement) |
+| IεPC hard gossip (impostor, KD45) | largest solved $n=16$ (250 s, 11 GB) | $n=32$ ($1.2\cdot10^{11}$ worlds) in 77 s, 0.5 GB |
+| deep's gossip, one agent informed | $n=16$ in 121 s (larger initial states not materialised) | $n=64$ in 95 s |
+| deep's gossip, every agent informed | out of memory after $n=10$ | $n=28$ (756 tells, $3.5\cdot10^{10}$ worlds) in 1 113 s (first improvement) |
+
+deep itself solves its gossip up to $n=6$. Plans are validated by plank where its grounder finishes; beyond, by a step-by-step replay in the explicit engine while it fits in memory, and in the symbolic engine after that.
+
+---
+
+## 11. Limitations and further work
 
 **The world cap is a completeness hole.** It is checked against $\lvert W\rvert \cdot \lvert E\rvert$ before precondition filtering. The surviving count is now cheap to compute exactly — one population count per event over the precondition extension — so the bound should be moved onto the real count, or onto post-contraction size.
 
@@ -433,7 +463,7 @@ what an announcement *is* changed.
 
 ---
 
-## 11. Implementation notes
+## 12. Implementation notes
 
 The planner is a self-contained C++23 binary. Beyond the algorithmic content above, the following language facilities carry weight in the design:
 
@@ -456,6 +486,8 @@ Notably absent: `std::mdspan`, which is the natural spelling for the $\lvert W\r
 - Hoffmann & Nebel. *The FF Planning System*. JAIR, 2001.
 - Hansen & Zilberstein. *LAO\*: A Heuristic Search Algorithm that Finds Solutions with Loops*. Artificial Intelligence, 2001.
 - Le, Fabiano, Son & Pontelli. *EFP and PG-EFP: Epistemic Forward Search Planners in Multi-Agent Domains*. ICAPS 2018. doi:10.1609/icaps.v28i1.13881
+- van Benthem, van Eijck, Gattinger & Su. *Symbolic Model Checking for Dynamic Epistemic Logic — S5 and Beyond*. Journal of Logic and Computation, 2018.
+- Bryant. *Graph-Based Algorithms for Boolean Function Manipulation*. IEEE Transactions on Computers, 1986.
 - Briglia, Fabiano & Mariani. *Scaling Multi-Agent Epistemic Planning through GNN-Derived Heuristics*. arXiv:2508.12840, 2025.
 
 ---

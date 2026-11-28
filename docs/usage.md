@@ -89,6 +89,7 @@ holds `null`. An empty array means the goal already held.
 | `--symbolic` | GBFS on BDD states: all states when the initial state has ≥ 1 024 worlds, otherwise only large valuation-injective ones; see below |
 | `--symbolic-threshold <n>` | World count above which an injective state is symbolic (implies `--symbolic`, disables the per-run choice; 0 = always) |
 | `--symbolic-hidden-threshold <n>` | The same for states that are not valuation-injective (default 1 048 576) |
+| `--first-improvement` | Symbolic GBFS nodes stop at the first successor that improves h and go back to the open list to resume after it (implies `--symbolic`) |
 | `--help` | Show usage |
 
 An unknown heuristic or strategy label is an error listing the valid ones, not
@@ -138,6 +139,14 @@ A task whose initial state is a finitary S5 theory (`ground --theory`) is
 materialised only when it fits under the threshold; larger ones start from the
 theory and are never enumerated (generated gossip with 64 agents has
 1.8·10^19 worlds). Statistics go to stderr as `[symsearch]` lines.
+
+`--first-improvement` changes only the expansion of symbolic nodes: a node
+stops at the first successor whose h is below its own and returns to the open
+list, to continue after that action when it is popped again. On large
+symbolic states, where each successor costs an update and a contraction, it
+avoids generating the siblings of a successor that is expanded next anyway
+(deep's gossip with every agent informed: n = 16 in 93 s instead of 561 s;
+n = 28 in 1 113 s).
 
 ```sh
 build-ground/ground --theory -d domain.epddl -p problem.epddl -l library.epddl -o task.json

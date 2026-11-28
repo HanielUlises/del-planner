@@ -337,10 +337,117 @@ hard n = 16 replay correctly in the explicit engine (n = 15: 274 s explicit,
 19 s symbolic); all of them replay in the
 symbolic one.
 
-Against deep on deep's own gossip formulation (private tells, mA*), translated
-with `ma2json.py`, plans validated by deep's plan execution: n = 5, deep
-HFS+C_PG 11.4 s, ours 0.04 s; n = 6, deep 226 s (portfolio: no plan), ours
-0.2 s (`exploration/symbolic/deepcmp/`).
+Against deep on deep's own gossip formulation (private tells, mA*; goal *one*:
+agent 0 believes every secret, deep's form; *all*: every agent does),
+translated with `ma2json.py`. Limits: 600 s, 12 GB (RLIMIT_AS), one thread.
+Ours is GBFS+kadd, explicit or `--symbolic` with the per-run choice
+(all-symbolic from n = 10, where the initial state has 2^10 worlds; below
+that no state crosses the thresholds and the run is explicit), with kadd
+splitting the goal as described in the next section. deep is not run beyond
+n = 8. Times are wall clock including loading (n = 16: 65 536 initial worlds
+in JSON, about 60 s of the symbolic "one" run; its search takes 0.5 s).
+
+| n | goal | deep portfolio | deep HFS+C_PG | ours explicit | ours `--symbolic` |
+|---|---|---|---|---|---|
+| 5 | one | 23.9 s, 2.3 GB, 14 steps | 11.4 s, 314 MB, 14 steps | 0.004 s, 4 steps | 0.005 s, 4 steps |
+| 5 | all | 34.7 s, 3.1 GB | 17.0 s, 420 MB | 0.02 s | 0.02 s |
+| 6 | one | out of memory | 184 s, 4.6 GB, 22 steps | 0.005 s, 5 steps | 0.006 s, 5 steps |
+| 6 | all | out of memory | 205 s, 5.2 GB | 0.07 s | 0.07 s |
+| 7 | one | out of memory | timeout | 0.02 s | 0.01 s |
+| 7 | all | out of memory | out of memory | 0.31 s | 0.36 s |
+| 8 | one | out of memory | out of memory | 0.02 s | 0.02 s |
+| 8 | all | out of memory | out of memory | 1.4 s, 157 MB | 1.6 s, 158 MB |
+| 10 | one | — | — | 0.10 s | 0.07 s |
+| 10 | all | — | — | 30 s, 2.6 GB | 19 s, 171 MB |
+| 12 | one | — | — | 0.78 s | 0.30 s |
+| 12 | all | — | — | out of memory | 61 s, 338 MB |
+| 14 | one | — | — | 9.2 s, 463 MB | 3.8 s, 104 MB |
+| 14 | all | — | — | out of memory | 215 s, 372 MB |
+| 16 | one | — | — | 121 s, 2.8 GB | 63 s, 212 MB |
+| 16 | all | — | — | out of memory | 561 s, 576 MB |
+
+Beyond n = 16, `ma2json.py --theory` writes the initial state as a finitary S5
+theory (type 1 the `initially` literals, type 2 propositional common
+knowledge, type 3 the C(B(i,f) | B(i,¬f)) statements), which is never
+materialised. At n = 10 it gives the same plans and expansions as the explicit
+file. Symbolic, *one*: n = 20 0.5 s, 24 0.9 s, 32 3.1 s, 48 22 s, 64 75 s
+(840 MB; up to 6·10^20 worlds), all with n − 1 tells; *all* times out from
+n = 20. These plans are replayed in the symbolic engine only
+(`symcheck --no-explicit`; n = 20 also explicitly): `symcheck` reports
+`goal_explicit` equal to the symbolic result when the explicit engine does
+not run, so `fixup.py`'s `valid_explicit_replay` is not an explicit check
+there (n = 24: the explicit replay ran out of memory, recorded as false).
+
+Plans: *one* n − 1 tells, *all* n(n − 1). Up to n = 8 they are validated by
+deep's plan execution (`deep -e`). From n = 10, `deep -e` itself throws
+`bad_alloc` at 12 GB (n = 10: after 348 s), so those plans are replayed in our
+explicit engine instead (`symcheck --enum 0`; all reach the goal). With the
+kadd of before the split, *one* took 251 s explicit / 60 s symbolic at n = 10
+(74 steps), symbolic 271 s at n = 12, and timed out at n = 14 in both
+representations. Data: `exploration/symbolic/deepcmp/results_fixed.jsonl`
+(old kadd, deep) and `results_sym3.jsonl` (split kadd); `run.py`, then
+`fixup.py`.
+
+### kadd: boxes over conjunctions (2026-11-27)
+
+deep's goal is one formula, [0](s_0 ∧ … ∧ s_n). kadd made it a single fact,
+which its relaxation never reaches, so every state had h = 1000 (the
+dead-conjunct penalty) until the goal held. GBFS ran on helpful actions and
+tie-breaking alone, and the default `--dead-ends suspect` ran h^Δ on every
+node (77–85 % of the time, never pruning). kadd now splits
+[i](φ ∧ ψ) into [i]φ ∧ [i]ψ, valid in every Kripke model, both among goal
+conjuncts and inside compiled formulas (test
+`kadd_splits_boxes_over_conjunctions`, fixture `deep-gossip-05-one.json`).
+
+Suite (GBFS+kadd, one thread, 300 s, dead ends off; `gbfs-kadd-exp3` /
+`auto3` against `exp2` / `auto`): 14 of 142 tasks contain such a box (coin
+in the box, intermediate and hard blocks world). Valid plans 124 → 122 in
+both configurations:
+
+- intermediate bw-4-05-2: 12.9 s, 2 892 steps → 0.03 s, 3 steps;
+  bw-3-06-2: 28 → 21 steps; hard bw-3-5-2-clumsy: 169 → 87 steps; coin 4:
+  8 → 6 steps (coin 2: 3 → 4);
+- lost: intermediate bw-4-07-3 (165 s → timeout) and hard bw-4-5-2-clumsy
+  (73 s → timeout; the helpful-action search runs dry and the retry without
+  pruning does not finish).
+
+Splitting only the goal gives the same results on these tasks. Both lost
+goals require a false belief: bw-4-5-2-clumsy wants [C]on(b3, b1) and
+[D](on(b3, b4) ∧ …), bw-4-07-3 wants [D](on(b5, b6) ∧ on(b5, b7)). The
+delete-free relaxation cannot see that the conjuncts conflict; the old kadd
+ignored one of them (it was a dead fact) and stumbled on a plan. Neither
+`--no-helpful` nor a reserve queue for the held-back non-preferred actions
+(instead of restarting) recovers them in 300 s. Every plan returned is valid.
+
+`--dead-ends suspect` ran h^Δ on nodes with kadd ≥ 1000, the per-conjunct
+penalty; with many conjuncts (gossip *all*, n(n − 1)) a finite estimate
+passes it. kadd/kff now record the dead conjuncts of their last estimate
+(`last_dead_conjuncts`), which the suspect test reads; other heuristics keep
+the threshold.
+
+Fixed (2026-11-27): symbolic h^Δ on gossip *all* n = 64 (`--dead-ends all`,
+or suspect before the fix above) threw `bdd: order violated in mk` after
+about 400 s. Each `permute()`/`swap_adjacent()` call caches under its own op
+code, kPermBase + 2·epoch (+1 if monotone), in 32 bits. After about 2^31
+calls (one h^Δ `build_cuts` renames ≈ 64 agents × 4 032 actions × 3 events
+functions) the code wrapped onto the fixed codes: the renaming x_p → y_p was
+cached as kNeg, so neg(x_p) returned y_p and the atom's false-set
+θ ∧ ¬x_p contained a y variable. The manager now drops the cache and restarts
+the epoch before the code can overflow (`next_perm_op`; test
+`permutation_op_codes_never_collide`, which failed before). Runs below 2^31
+renamings were unaffected; every plan reported above was also replayed in a
+fresh process, whose epoch stays far from the wrap.
+
+The symbolic per-node h^Δ check now stops at the search deadline
+(`h_delta_until`; a check cut short prunes nothing). Before, one check could
+outlast `--timeout` by an hour (gossip *all*, 64 agents, `--dead-ends all`,
+1 500 s limit); now a 120 s limit ends after 153 s, mostly loading. The
+explicit `hdelta::prunes` still runs without a deadline.
+
+Also tried: evaluating fact formulas only on the designated worlds (pointed
+model checking, [i]ψ on U needs ψ only on R_i(U)). The facts are equal but it
+was not faster (n = 16: 0.06 s against 0.02 s for the whole search's
+heuristic); reverted.
 
 Hard gos-12-imp-deceived: 2.5 s symbolic against 4.4 s explicit (each
 includes about 1.8 s of loading). Intermediate gos-09-all, the largest size
@@ -360,7 +467,83 @@ all-symbolic before these changes (geometric mean 0.71× explicit time over
 10 tasks). Explicit thresholds (`--symbolic-threshold`,
 `--symbolic-hidden-threshold`) disable the per-run choice.
 
+### First improvement (2026-11-27)
+
+On gossip GBFS is perfectly guided (expanded = plan length), yet every
+expansion builds and contracts all applicable successors: 28 921
+contractions for 240 expansions on deep's gossip *all*, n = 16, 337 of 500 s.
+The depth-one certificate needs nearly every agent there (22 of 24 passes at
+n = 12; a move-to-front agent order saved 3 %), so the lever is the number of
+successors, not the certificate.
+
+`--first-improvement` (implies `--symbolic`; `Options::first_improvement`):
+a symbolic node stops at the first successor whose h is below its own and
+goes back to the open list with `resume` = that action + 1, keeping its
+state and proven swaps. Explicit nodes keep ordinary GBFS, so it is opt-in and
+the hybrid tests are unchanged. Same plan lengths on every task below; plans
+replayed in a fresh process.
+
+| task | GBFS | first improvement |
+|---|---|---|
+| deep gossip *all* n = 12 | 61 s, 8 779 contractions | 3.4 s, 133 |
+| deep gossip *all* n = 16 | 561 s | 51–84 s (search 36 s) |
+| IεPC intermediate gos-15 | 114 s | 42 s |
+| IεPC intermediate gos-17 | 292 s | 116 s |
+| IεPC intermediate gos-19 (3.1·10^7 worlds) | — | 252 s |
+| IεPC intermediate gos-21 (1.5·10^8 worlds) | — | 485 s |
+| IεPC hard gos-24-imp | 21 s | 8.5 s |
+
+Beyond n = 16 on deep's gossip (*every agent*, 1 800 s, n(n−1) tells; the
+explicit replay runs out of memory from n = 20, so these plans were replayed
+with `symcheck --no-explicit`, goal reached at every step):
+
+| n | GBFS | first improvement | + two-copy certificate |
+|---|---|---|---|
+| 20 | — | 167 s, 513 MB | 131 s, 357 MB |
+| 24 | — | 931 s, 807 MB (1.6·10^9 worlds) | 481 s, 379 MB |
+| 28 | — | TO (516 of 756 expansions in 600 s) | 1 113 s, 545 MB (3.5·10^10 worlds) |
+| 32 | — | TO | TO (949 of 992 expansions) |
+
+gos-19/21 are generated like gos-13..17 (agents list extended, `ground
+--theory`; regenerating gos-17 reproduces its file byte for byte) and replay
+in the symbolic engine (342 and 420 steps).
+
+### Two copies for the certificate (2026-11-27)
+
+Sampled stacks of the n = 24 search: 26 of 32 samples in `contract`, 22 in
+`depth_one_pairs`; contraction was 452 of 600 s. Every expansion there makes
+one successor (first improvement), so the certificate is the cost per step.
+Instrumented on the n = 16 replay, 7 331 agent passes for 240 certificates
+(30–32 of 32 passes each: each agent separates about 12% of the pairs, so
+no order empties D early), and the xor `S(x,u) ⊕ S(y,u)` over three copies
+cost three times the conjunction with D.
+
+Two changes, same relation D:
+
+- Pairs of D share their valuation, so D is kept as D'(x_P, x_H, y_H) and the
+  y_P slot holds the successor's valuation: `S(x, y_P)` against S with x_H
+  renamed to y_H. Two copies of the atoms instead of three.
+- `Manager::and_exists_xor(d, f, g, vars)` = ∃vars. d ∧ (f ⊕ g) in one
+  recursion, so the xor is never built where d is false. The quantified
+  suffix at a node is fixed by its level, so within one call the cache key is
+  (d, f, g) under a fresh op code (`next_perm_op`).
+
+Certificate time on the n = 16 replay 13.5 → 10.3 s (two copies) → 5.8 s
+(fused); replay of n = 20 59.5 → 29.9 s. Checked against the old computation
+(both run, relations compared for equality) on every contraction of the 18
+hidden-gossip replays, including the hard ones where D is non-empty and the
+fixpoint runs: no difference.
+
 ### Negative results
+
+- **Certificate on per-world signatures** (number the sub-BDDs below the x
+  levels, then test that no x_P, l has two hidden witnesses, exactly, by a
+  pass computing ∃x_H and "at least two x_H"): over 600 s against 18.8 s on
+  the n = 16 replay. The signatures need the atoms' copy z below every x
+  variable, which breaks the x/y interleaving that keeps relations small; the
+  same cause as signature refinement below. Also re-measured: one fused pass
+  for all agents with the agent code below the copies (over 600 s against
+  30 s on n = 20), as recorded below for gos-09.
 
 - **Signature refinement** (blocks as numbers on bits below the x levels, as
   in BDD-based bisimulation minimisation) is correct but not faster here.

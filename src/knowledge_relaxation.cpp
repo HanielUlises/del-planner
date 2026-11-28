@@ -111,6 +111,23 @@ std::uint32_t KnowledgeRelaxationHeuristic::compile(const FormulaPtr& f, bool ne
         case FormulaKind::Not:
             out = compile(f->children[0], !negated);
             break;
+        case FormulaKind::Belief:
+            if (f->children[0]->kind == FormulaKind::And) {
+                // [i](φ ∧ ψ) ≡ [i]φ ∧ [i]ψ in every Kripke model: one fact per
+                // conjunct, so that the relaxation can reach them one at a time.
+                std::vector<FormulaPtr> bs;
+                for (const auto& c : f->children[0]->children) bs.push_back(Formula::make_belief(f->agent, c));
+                out = compile(Formula::make_and(std::move(bs)), negated);
+                break;
+            }
+            [[fallthrough]];
+        default: {   // atoms and modal formulas are facts
+            const std::uint32_t fi = fact(negated ? Formula::make_not(f) : f);
+            Req r{Kind::Fact, fi, 0, 0};
+            reqs_.push_back(r);
+            out = static_cast<std::uint32_t>(reqs_.size() - 1);
+            break;
+        }
         case FormulaKind::And:
         case FormulaKind::Or: {
             std::vector<std::uint32_t> cs;
@@ -118,12 +135,6 @@ std::uint32_t KnowledgeRelaxationHeuristic::compile(const FormulaPtr& f, bool ne
             const bool conj = (f->kind == FormulaKind::And) != negated;
             out = node(conj ? Kind::And : Kind::Or, std::move(cs));
             break;
-        }
-        default: {   // atoms and modal formulas are facts
-            const std::uint32_t fi = fact(negated ? Formula::make_not(f) : f);
-            Req r{Kind::Fact, fi, 0, 0};
-            reqs_.push_back(r);
-            out = static_cast<std::uint32_t>(reqs_.size() - 1);
         }
     }
     compiled_[key] = out;
@@ -140,11 +151,20 @@ void KnowledgeRelaxationHeuristic::add_op(std::uint32_t pre, const std::vector<s
 
 KnowledgeRelaxationHeuristic::KnowledgeRelaxationHeuristic(const PlanningTask& task, Estimate estimate)
     : estimate_(estimate) {
-    const FormulaPtr& g = task.goal;
-    if (g->kind == FormulaKind::And)
-        for (const auto& c : g->children) goal_.push_back(compile(c, false));
-    else
-        goal_.push_back(compile(g, false));
+    // Goal conjuncts, with [i](φ ∧ ψ) split into [i]φ and [i]ψ: kDead counts
+    // unreachable conjuncts, so one box over a conjunction would make every
+    // state look like a dead end until the goal holds.
+    std::vector<FormulaPtr> conj;
+    auto split = [&](auto& self, const FormulaPtr& f) -> void {
+        if (f->kind == FormulaKind::And) { for (const auto& c : f->children) self(self, c); return; }
+        if (f->kind == FormulaKind::Belief && f->children[0]->kind == FormulaKind::And) {
+            for (const auto& c : f->children[0]->children) self(self, Formula::make_belief(f->agent, c));
+            return;
+        }
+        conj.push_back(f);
+    };
+    split(split, task.goal);
+    for (const auto& c : conj) goal_.push_back(compile(c, false));
 
     // First pass: compile every precondition and observability condition, so
     // the nested facts [i][j]ℓ the task mentions are known before operators
@@ -510,13 +530,16 @@ float KnowledgeRelaxationHeuristic::operator()(const EpistemicState& s,
 float KnowledgeRelaxationHeuristic::estimate(const std::vector<std::uint8_t>& init) const {
     thread_local std::vector<std::int32_t> fc, rc, sup;
     float h = 0.f;
+    int dead = 0;
     if (estimate_ == Estimate::Add) {
         costs(init, fc, rc, nullptr);
-        for (std::uint32_t r : goal_) h += rc[r] >= kInf ? kDead : float(rc[r]);
+        for (std::uint32_t r : goal_) { h += rc[r] >= kInf ? kDead : float(rc[r]); dead += rc[r] >= kInf; }
+        last_dead_conjuncts = dead;
         return h;
     }
     costs(init, fc, rc, &sup);
-    for (std::uint32_t r : goal_) h += rc[r] >= kInf ? kDead : 0.f;
+    for (std::uint32_t r : goal_) { h += rc[r] >= kInf ? kDead : 0.f; dead += rc[r] >= kInf; }
+    last_dead_conjuncts = dead;
     return h + float(extract(rc, sup, nullptr));
 }
 

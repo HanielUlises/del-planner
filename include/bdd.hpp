@@ -49,6 +49,8 @@ public:
     [[nodiscard]] std::size_t peak_live() const noexcept { return peak_live_; }
     [[nodiscard]] std::size_t gc_runs() const noexcept { return gc_runs_; }
     [[nodiscard]] std::uint64_t gc_epoch() const noexcept { return gc_runs_; }
+    // Times the permutation epoch ran out and the cache was dropped.
+    [[nodiscard]] std::size_t perm_restarts() const noexcept { return perm_restarts_; }
     [[nodiscard]] std::size_t cache_entries() const noexcept { return cache_.size(); }
     // Bytes held by the node array, the unique table and the computed cache.
     [[nodiscard]] std::size_t bytes() const noexcept {
@@ -186,6 +188,30 @@ public:
         return r;
     }
 
+    Ref axor_rec(Ref d, Ref f, Ref g, Ref vars, std::uint32_t op) {
+        if (d == kFalse || f == g) return kFalse;
+        if (f > g) std::swap(f, g);
+        if (f == kFalse) return and_exists(d, g, vars);
+        if (f == kTrue) return and_exists(d, neg(g), vars);
+        const std::uint32_t v = std::min(top(d), std::min(top(f), top(g)));
+        while (vars > kTrue && top(vars) < v) vars = hi(vars);
+        if (vars == kTrue) return band(d, bxor(f, g));
+        Ref r;
+        if (lookup(op, d, f, g, r)) return r;
+        const auto [d0, d1] = cof(d, v);
+        const auto [f0, f1] = cof(f, v);
+        const auto [g0, g1] = cof(g, v);
+        if (top(vars) == v) {
+            const Ref r0 = axor_rec(d0, f0, g0, hi(vars), op);
+            r = r0 == kTrue ? kTrue : bor(r0, axor_rec(d1, f1, g1, hi(vars), op));
+        } else {
+            const Ref r0 = axor_rec(d0, f0, g0, vars, op);
+            r = mk(v, r0, axor_rec(d1, f1, g1, vars, op));
+        }
+        store(op, d, f, g, r);
+        return r;
+    }
+
     Ref biff(Ref f, Ref g) { return neg(bxor(f, g)); }
     Ref bdiff(Ref f, Ref g) { return band(f, neg(g)); }       // f ∧ ¬g
     [[nodiscard]] bool subset(Ref f, Ref g) { return bdiff(f, g) == kFalse; }
@@ -305,11 +331,35 @@ public:
         return r;
     }
 
+    // ∃vars. d ∧ (f ⊕ g), without building f ⊕ g where d is false. The
+    // quantified suffix at a node is determined by its level, so within one
+    // call the cache key is (d, f, g) under a fresh op code.
+    Ref and_exists_xor(Ref d, Ref f, Ref g, Ref vars) {
+        return axor_rec(d, f, g, vars, next_perm_op(false));
+    }
+
+    // Tests only: position the permutation epoch (see next_perm_op).
+    void set_perm_epoch(std::uint32_t e) noexcept { perm_epoch_ = e; }
+
+    // A fresh op code for one permute()/swap_adjacent() call, so that its cache
+    // entries are never read by another call: kPermBase + 2·epoch (+1 if
+    // monotone). Before that can leave 32 bits and wrap onto the fixed codes
+    // (after about 2^31 calls), the cache is dropped and the epoch restarts.
+    std::uint32_t next_perm_op(bool monotone) {
+        constexpr std::uint32_t kLast = (0xFFFFFFFFu - kPermBase - 1u) / 2u;
+        if (perm_epoch_ >= kLast) {
+            std::fill(cache_.begin(), cache_.end(), Entry{0, 0, 0, 0, 0});
+            perm_epoch_ = 0;
+            ++perm_restarts_;
+        }
+        return kPermBase + (++perm_epoch_ << 1) + (monotone ? 1u : 0u);
+    }
+
     // Rename variables by perm (perm[v] = new variable of v; size num_vars()).
     // monotone = the caller guarantees perm is increasing on the support of f,
     // which permits a structural relabelling; otherwise ITE rebuilds.
     Ref permute(Ref f, const std::vector<std::uint32_t>& perm, bool monotone) {
-        const std::uint32_t op = kPermBase + (++perm_epoch_ << 1) + (monotone ? 1u : 0u);
+        const std::uint32_t op = next_perm_op(monotone);
         perm_ = &perm;
         return permute_rec(f, op, monotone);
     }
@@ -318,7 +368,7 @@ public:
     // not overlap). Adjacent levels swap in one pass, linear in |f| like a
     // monotone relabelling, where permute() would rebuild through ITE.
     Ref swap_adjacent(Ref f, const std::vector<std::uint8_t>& first) {
-        const std::uint32_t op = kPermBase + (++perm_epoch_ << 1);
+        const std::uint32_t op = next_perm_op(false);
         swap_first_ = &first;
         return swap_rec(f, op);
     }
@@ -482,6 +532,7 @@ private:
     std::vector<Entry> cache_;
     std::size_t cmask_{0};
     std::uint32_t perm_epoch_{0};
+    std::size_t   perm_restarts_{0};
     const std::vector<std::uint32_t>* perm_{nullptr};
     const std::vector<std::uint8_t>* swap_first_{nullptr};
 };
