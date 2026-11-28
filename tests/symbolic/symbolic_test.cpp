@@ -158,6 +158,32 @@ TEST(swap_adjacent_matches_permute) {
     }
 }
 
+TEST(and_exists_xor_matches_and_exists_of_xor) {
+    bdd::Manager m(24);
+    std::mt19937 rng(5);
+    auto random_dnf = [&](int clauses) {
+        bdd::Ref f = bdd::kFalse;
+        for (int c = 0; c < clauses; ++c) {
+            bdd::Ref cl = bdd::kTrue;
+            for (int k = 0; k < 4; ++k) {
+                const std::uint32_t v = rng() % 24;
+                cl = m.band(cl, rng() % 2 ? m.var(v) : m.nvar(v));
+            }
+            f = m.bor(f, cl);
+        }
+        return f;
+    };
+    for (int i = 0; i < 200; ++i) {
+        const bdd::Ref d = random_dnf(1 + int(rng() % 10)), f = random_dnf(1 + int(rng() % 10));
+        const bdd::Ref g = i % 7 == 0 ? f : i % 11 == 0 ? bdd::kTrue : random_dnf(1 + int(rng() % 10));
+        std::vector<std::uint32_t> q;
+        for (std::uint32_t v = 0; v < 24; ++v) if (rng() % 3 == 0) q.push_back(v);
+        const bdd::Ref vars = m.varset(q);
+        CHECK(m.and_exists_xor(d, f, g, vars) == m.and_exists(d, m.bxor(f, g), vars));
+        CHECK(m.and_exists_xor(d, g, f, vars) == m.and_exists(d, m.bxor(f, g), vars));
+    }
+}
+
 // ----------------------------------------------------------------- identity
 
 // Symbolic successors equal the encoding of the explicit successors: the same
@@ -397,6 +423,29 @@ TEST(hybrid_search_from_theory) {
     }
 }
 
+
+// First improvement changes the search, not what a plan is: every plan it
+// returns is valid, and on deep's gossip it still finds the n - 1 direct tells.
+TEST(first_improvement_returns_valid_plans) {
+    for (const char* f : {"benchmarks/gossip1/problem_1.json", "benchmarks/coin1/problem_1.json",
+                          "tests/symbolic/intermediate-gos-05-all.json",
+                          "tests/symbolic/hard-gos-04-imp-deceived.json",
+                          "tests/symbolic/deep-gossip-05-one.json"}) {
+        PlanningTask t = load(f);
+        t.symmetry = std::make_shared<AgentSymmetry>(AgentSymmetry::detect(t));
+        const KnowledgeRelaxationHeuristic h(t);
+        symsearch::Options o;
+        o.threshold = o.hidden_threshold = 0;
+        o.first_improvement = true;
+        std::cerr.setstate(std::ios::failbit);
+        const auto r = symsearch::search(t, h, o);
+        std::cerr.clear();
+        CHECK_MSG(r.has_value(), f);
+        if (!r) continue;
+        CHECK_MSG(valid(t, r->plan), f);
+        if (std::string(f).find("deep-gossip") != std::string::npos) CHECK(r->plan.size() == 4);
+    }
+}
 
 // deep's gossip goal is one box over a conjunction, [0](s_0 ∧ … ∧ s_4). kadd
 // splits it into [0]s_j, so the initial estimate is finite (it was the

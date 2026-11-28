@@ -438,6 +438,12 @@ the epoch before the code can overflow (`next_perm_op`; test
 renamings were unaffected; every plan reported above was also replayed in a
 fresh process, whose epoch stays far from the wrap.
 
+The symbolic per-node h^Δ check now stops at the search deadline
+(`h_delta_until`; a check cut short prunes nothing). Before, one check could
+outlast `--timeout` by an hour (gossip *all*, 64 agents, `--dead-ends all`,
+1 500 s limit); now a 120 s limit ends after 153 s, mostly loading. The
+explicit `hdelta::prunes` still runs without a deadline.
+
 Also tried: evaluating fact formulas only on the designated worlds (pointed
 model checking, [i]ψ on U needs ψ only on R_i(U)). The facts are equal but it
 was not faster (n = 16: 0.06 s against 0.02 s for the whole search's
@@ -461,7 +467,83 @@ all-symbolic before these changes (geometric mean 0.71× explicit time over
 10 tasks). Explicit thresholds (`--symbolic-threshold`,
 `--symbolic-hidden-threshold`) disable the per-run choice.
 
+### First improvement (2026-11-27)
+
+On gossip GBFS is perfectly guided (expanded = plan length), yet every
+expansion builds and contracts all applicable successors: 28 921
+contractions for 240 expansions on deep's gossip *all*, n = 16, 337 of 500 s.
+The depth-one certificate needs nearly every agent there (22 of 24 passes at
+n = 12; a move-to-front agent order saved 3 %), so the lever is the number of
+successors, not the certificate.
+
+`--first-improvement` (implies `--symbolic`; `Options::first_improvement`):
+a symbolic node stops at the first successor whose h is below its own and
+goes back to the open list with `resume` = that action + 1, keeping its
+state and proven swaps. Explicit nodes keep ordinary GBFS, so it is opt-in and
+the hybrid tests are unchanged. Same plan lengths on every task below; plans
+replayed in a fresh process.
+
+| task | GBFS | first improvement |
+|---|---|---|
+| deep gossip *all* n = 12 | 61 s, 8 779 contractions | 3.4 s, 133 |
+| deep gossip *all* n = 16 | 561 s | 51–84 s (search 36 s) |
+| IεPC intermediate gos-15 | 114 s | 42 s |
+| IεPC intermediate gos-17 | 292 s | 116 s |
+| IεPC intermediate gos-19 (3.1·10^7 worlds) | — | 252 s |
+| IεPC intermediate gos-21 (1.5·10^8 worlds) | — | 485 s |
+| IεPC hard gos-24-imp | 21 s | 8.5 s |
+
+Beyond n = 16 on deep's gossip (*every agent*, 1 800 s, n(n−1) tells; the
+explicit replay runs out of memory from n = 20, so these plans were replayed
+with `symcheck --no-explicit`, goal reached at every step):
+
+| n | GBFS | first improvement | + two-copy certificate |
+|---|---|---|---|
+| 20 | — | 167 s, 513 MB | 131 s, 357 MB |
+| 24 | — | 931 s, 807 MB (1.6·10^9 worlds) | 481 s, 379 MB |
+| 28 | — | TO (516 of 756 expansions in 600 s) | 1 113 s, 545 MB (3.5·10^10 worlds) |
+| 32 | — | TO | TO (949 of 992 expansions) |
+
+gos-19/21 are generated like gos-13..17 (agents list extended, `ground
+--theory`; regenerating gos-17 reproduces its file byte for byte) and replay
+in the symbolic engine (342 and 420 steps).
+
+### Two copies for the certificate (2026-11-27)
+
+Sampled stacks of the n = 24 search: 26 of 32 samples in `contract`, 22 in
+`depth_one_pairs`; contraction was 452 of 600 s. Every expansion there makes
+one successor (first improvement), so the certificate is the cost per step.
+Instrumented on the n = 16 replay, 7 331 agent passes for 240 certificates
+(30–32 of 32 passes each: each agent separates about 12% of the pairs, so
+no order empties D early), and the xor `S(x,u) ⊕ S(y,u)` over three copies
+cost three times the conjunction with D.
+
+Two changes, same relation D:
+
+- Pairs of D share their valuation, so D is kept as D'(x_P, x_H, y_H) and the
+  y_P slot holds the successor's valuation: `S(x, y_P)` against S with x_H
+  renamed to y_H. Two copies of the atoms instead of three.
+- `Manager::and_exists_xor(d, f, g, vars)` = ∃vars. d ∧ (f ⊕ g) in one
+  recursion, so the xor is never built where d is false. The quantified
+  suffix at a node is fixed by its level, so within one call the cache key is
+  (d, f, g) under a fresh op code (`next_perm_op`).
+
+Certificate time on the n = 16 replay 13.5 → 10.3 s (two copies) → 5.8 s
+(fused); replay of n = 20 59.5 → 29.9 s. Checked against the old computation
+(both run, relations compared for equality) on every contraction of the 18
+hidden-gossip replays, including the hard ones where D is non-empty and the
+fixpoint runs: no difference.
+
 ### Negative results
+
+- **Certificate on per-world signatures** (number the sub-BDDs below the x
+  levels, then test that no x_P, l has two hidden witnesses, exactly, by a
+  pass computing ∃x_H and "at least two x_H"): over 600 s against 18.8 s on
+  the n = 16 replay. The signatures need the atoms' copy z below every x
+  variable, which breaks the x/y interleaving that keeps relations small; the
+  same cause as signature refinement below. Also re-measured: one fused pass
+  for all agents with the agent code below the copies (over 600 s against
+  30 s on n = 20), as recorded below for gos-09.
 
 - **Signature refinement** (blocks as numbers on bits below the x levels, as
   in BDD-based bisimulation minimisation) is correct but not faster here.

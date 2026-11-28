@@ -188,6 +188,30 @@ public:
         return r;
     }
 
+    Ref axor_rec(Ref d, Ref f, Ref g, Ref vars, std::uint32_t op) {
+        if (d == kFalse || f == g) return kFalse;
+        if (f > g) std::swap(f, g);
+        if (f == kFalse) return and_exists(d, g, vars);
+        if (f == kTrue) return and_exists(d, neg(g), vars);
+        const std::uint32_t v = std::min(top(d), std::min(top(f), top(g)));
+        while (vars > kTrue && top(vars) < v) vars = hi(vars);
+        if (vars == kTrue) return band(d, bxor(f, g));
+        Ref r;
+        if (lookup(op, d, f, g, r)) return r;
+        const auto [d0, d1] = cof(d, v);
+        const auto [f0, f1] = cof(f, v);
+        const auto [g0, g1] = cof(g, v);
+        if (top(vars) == v) {
+            const Ref r0 = axor_rec(d0, f0, g0, hi(vars), op);
+            r = r0 == kTrue ? kTrue : bor(r0, axor_rec(d1, f1, g1, hi(vars), op));
+        } else {
+            const Ref r0 = axor_rec(d0, f0, g0, vars, op);
+            r = mk(v, r0, axor_rec(d1, f1, g1, vars, op));
+        }
+        store(op, d, f, g, r);
+        return r;
+    }
+
     Ref biff(Ref f, Ref g) { return neg(bxor(f, g)); }
     Ref bdiff(Ref f, Ref g) { return band(f, neg(g)); }       // f ∧ ¬g
     [[nodiscard]] bool subset(Ref f, Ref g) { return bdiff(f, g) == kFalse; }
@@ -305,6 +329,13 @@ public:
         }
         store(kAndEx, f, g, vars, r);
         return r;
+    }
+
+    // ∃vars. d ∧ (f ⊕ g), without building f ⊕ g where d is false. The
+    // quantified suffix at a node is determined by its level, so within one
+    // call the cache key is (d, f, g) under a fresh op code.
+    Ref and_exists_xor(Ref d, Ref f, Ref g, Ref vars) {
+        return axor_rec(d, f, g, vars, next_perm_op(false));
     }
 
     // Tests only: position the permutation epoch (see next_perm_op).
